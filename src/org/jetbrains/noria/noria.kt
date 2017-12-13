@@ -38,24 +38,27 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
 val currentContext = ThreadLocal<ReconciliationContext>()
 
 class MapProperty<T>(val m: MutableMap<KProperty<*>, Any?>,
+                     val m2: MutableMap<KProperty<*>, Any?>?,
                      val default: () -> T) : ReadWriteProperty<Any, T> {
     override fun getValue(thisRef: Any, property: KProperty<*>): T =
             m.getOrPut(property, default) as T
 
     override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
         m[property] = value
+        m2?.put(property, value)
     }
 }
 
 abstract class PrimitiveElement : Element() {
+    val constructorParameters = mutableMapOf<KProperty<*>, Any?>()
     val componentsMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : Element> element() = MapProperty(componentsMap, { null })
+    fun <T : Element> element(constructor: Boolean = false) = MapProperty(componentsMap, if (constructor) constructorParameters else null, { null })
 
     val childrenMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : List<Element>> children() = MapProperty(childrenMap, { mutableListOf<Element>() })
+    fun <T : List<Element>> children() = MapProperty(childrenMap, null, { mutableListOf<Element>() })
 
     val valuesMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T> value() = MapProperty(valuesMap, { null })
+    fun <T> value(constructor: Boolean = false) = MapProperty(valuesMap, if (constructor) valuesMap else null, { null })
 }
 
 typealias Render<T> = (T) -> Element?
@@ -129,6 +132,9 @@ fun reconcilePrimitive(primitiveComponent: PrimitiveComponent<*>?, e: PrimitiveE
         return reconcilePrimitive(null, e)
     }
     val node: Int = primitiveComponent?.node ?: currentContext.get().makeNode()
+    if (primitiveComponent?.node == null) {
+        currentContext.get().supply(Update.MakeNode(e::class, e.constructorParameters)) // TODO: supply constructor parameters
+    }
 
     val childrenMap = mutableMapOf<KProperty<*>, List<Component<*>>>()
     for ((attr, children) in e.childrenMap) {
