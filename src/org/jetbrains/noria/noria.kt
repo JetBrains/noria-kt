@@ -172,12 +172,29 @@ fun reconcilePrimitive(primitiveComponent: PrimitiveComponent<*>?, e: PrimitiveE
 fun reconcileList(node: Int, attr: KProperty<*>, components: List<Component<*>>?, elements: List<Element>): List<Component<*>> {
     val componentsByKeys: Map<Any, Component<*>> = components?.map { it.element.key!! to it }?.toMap() ?: emptyMap()
     val reconciledList = reconcileByKeys(componentsByKeys, elements)
-    updateOrder(node, attr, components?.map { it.node }?.filterNotNull() ?: listOf(), reconciledList.map { it.node }.filterNotNull())
+    val (removes, adds) = updateOrder(node, attr, components?.map { it.node }?.filterNotNull() ?: listOf(), reconciledList.map { it.node }.filterNotNull())
+    for (update in removes + adds) {
+        currentContext.get().supply(update)
+    }
     return reconciledList
 }
 
-fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List<Int>) {
-
+fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List<Int>): Pair<List<Update.RemoveChild>, List<Update.AddChild>> {
+    val lcs = LCS.lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
+    val oldNodesSet = oldList.toHashSet()
+    val removes = mutableListOf<Update.RemoveChild>()
+    val adds = mutableListOf<Update.AddChild>()
+    for (c in oldList + newList) {
+        if (!lcs.contains(c) && oldNodesSet.contains(c)) {
+            removes.add(Update.RemoveChild(node = node, child = c, attr = attr))
+        }
+    }
+    newList.forEachIndexed {i, c ->
+        if (!lcs.contains(c)) {
+            adds.add(Update.AddChild(node = node, child = c, attr = attr, index = i))
+        }
+    }
+    return removes to adds
 }
 
 
