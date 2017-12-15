@@ -1,6 +1,5 @@
 package org.jetbrains.noria
 
-import java.util.concurrent.Future
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
@@ -61,12 +60,10 @@ abstract class PrimitiveElement : Element() {
     fun <T> value(constructor: Boolean = false) = MapProperty(valuesMap, if (constructor) valuesMap else null, { null })
 }
 
-typealias Render<T> = (T) -> Element?
-
 typealias ShouldComponentUpdate<T> = (old: T, new: T) -> Boolean
 
 class ComponentSpec<T> {
-    var render: Render<T> = { null }
+    var render: Render<T> = { TODO() }
     var shouldComponentUpdate: ShouldComponentUpdate<T> = { old, new -> old != new }
 }
 

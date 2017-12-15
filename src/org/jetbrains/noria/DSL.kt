@@ -1,33 +1,36 @@
 package org.jetbrains.noria
 
-interface Props
+import kotlin.reflect.KClass
+
+abstract class Props {
+    var key: Any? = null
+}
 
 abstract class View<T: Props> {
     lateinit var props: T
 
     open fun shouldUpdate(newProps: T): Boolean = props != newProps
-    abstract fun render(): View<*>
+    abstract fun render(): NElement<*>
 }
 
-open class ContainerProps : Props {
-    val children = mutableListOf<View<*>>()
+typealias Render<T> = (T) -> NElement<*>
 
-    operator fun View<*>.unaryPlus() {
+sealed class NElement<T: Props>(val props: T) {
+    internal class Fun<T: Props>(val f: Render<T>, props: T) : NElement<T>(props)
+    internal class Class<T: Props>(val kClass: KClass<*>, props: T) : NElement<T>(props)
+    internal class Primitive<T: Props>(val name: String, props: T) : NElement<T>(props)
+}
+
+open class ContainerProps : Props() {
+    val children = mutableListOf<NElement<*>>()
+
+    operator fun NElement<*>.unaryPlus() {
         children += this
     }
 }
 
 abstract class Container<T: ContainerProps> : View<T>()
 
-inline fun <reified N : View<P>, P: Props> node(props: P) : N {
-    return instantiateNode(N::class).apply {
-        this.props = props
-    }
-}
-
-inline fun <reified N : View<P>, P: Props> node(props: P, builder: P.() -> Unit) : N {
-    return instantiateNode(N::class).apply {
-        props.builder()
-        this.props = props
-    }
-}
+infix fun <T: Props> Render<T>.with(props: T) : NElement<T> = NElement.Fun(this, props)
+infix fun <V: View<T>, T: Props> KClass<V>.with(props: T) : NElement<T> = NElement.Class(this, props)
+infix fun <T: Props> String.with(props: T) : NElement<T> = NElement.Primitive(this, props)
