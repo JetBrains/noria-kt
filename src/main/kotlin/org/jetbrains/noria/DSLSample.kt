@@ -3,7 +3,7 @@ package org.jetbrains.noria
 fun testNodes() : NElement<*> {
 
     ::link with LinkProps("")
-    "div" with LinkProps("")
+//    "div" with LinkProps("")
     HBox::class with BoxProps()
     
     return vbox {
