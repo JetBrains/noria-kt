@@ -3,13 +3,13 @@ package org.jetbrains.noria
 class BoxProps(val alignItems: String = "", val alignSelf: String = "") : ContainerProps()
 
 class VBox : Container<BoxProps>() {
-    override fun render(): View<*> = renderVBox(props)
+    override fun render(): NElement<*> = renderVBox(props)
 }
 
-inline fun vbox(alignItems: String = "", alignSelf: String = "", builder: BoxProps.() -> Unit): VBox = node(BoxProps(alignItems, alignSelf), builder)
+inline fun vbox(alignItems: String = "", alignSelf: String = "", builder: BoxProps.() -> Unit) = VBox::class.with(BoxProps(alignItems, alignSelf).apply(builder))
 
 class HBox : Container<BoxProps>() {
-    override fun render(): View<*> = renderHBox(props)
+    override fun render(): NElement<*> = renderHBox(props)
 }
 
-inline fun hbox(builder: BoxProps.() -> Unit): HBox = node(BoxProps(), builder)
+inline fun hbox(alignItems: String = "", alignSelf: String = "", builder: BoxProps.() -> Unit) = HBox::class.with(BoxProps(alignItems, alignSelf).apply(builder))
