@@ -9,7 +9,6 @@ abstract class Element {
     init {
         currentContext.get().createdElements.add(this)
     }
-
     var key: Any? = null
     val tempId: Int = currentContext.get().nextTempId()
 }
@@ -17,8 +16,8 @@ abstract class Element {
 sealed class Update {
     data class MakeNode(val type: KClass<*>, val parameters: Map<KProperty<*>, Any?>) : Update()
     data class SetAttr(val node: Int, val attr: KProperty<*>, val value: Any?) : Update()
-    data class AddChild(val node: Int, val attr: KProperty<*>, val child: Any?, val index: Int) : Update()
-    data class RemoveChild(val node: Int, val attr: KProperty<*>, val child: Any?) : Update()
+    data class Add(val node: Int, val attr: KProperty<*>, val child: Any?, val index: Int) : Update()
+    data class Remove(val node: Int, val attr: KProperty<*>, val child: Any?) : Update()
     data class DestroyNode(val node: Int) : Update()
 }
 
@@ -39,7 +38,7 @@ val currentContext = ThreadLocal<ReconciliationContext>()
 
 class MapProperty<T>(val m: MutableMap<KProperty<*>, Any?>,
                      val m2: MutableMap<KProperty<*>, Any?>?,
-                     val default: () -> T) : ReadWriteProperty<Any, T> {
+                     val default: () -> T?) : ReadWriteProperty<Any, T> {
     override fun getValue(thisRef: Any, property: KProperty<*>): T =
             m.getOrPut(property, default) as T
 
@@ -52,13 +51,16 @@ class MapProperty<T>(val m: MutableMap<KProperty<*>, Any?>,
 abstract class PrimitiveElement : Element() {
     val constructorParameters = mutableMapOf<KProperty<*>, Any?>()
     val componentsMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : Element> element(constructor: Boolean = false) = MapProperty(componentsMap, if (constructor) constructorParameters else null, { null })
+    fun <T : Element> element(constructor: Boolean = false) =
+            MapProperty(componentsMap, if (constructor) constructorParameters else null, { null })
 
     val childrenMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : List<Element>> children() = MapProperty(childrenMap, null, { mutableListOf<Element>() })
+    fun <T : List<Element>> elementList() =
+            MapProperty(childrenMap, null, { mutableListOf<Element>() as T })
 
     val valuesMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T> value(constructor: Boolean = false) = MapProperty(valuesMap, if (constructor) valuesMap else null, { null })
+    fun <T> value(constructor: Boolean = false) =
+            MapProperty<T>(valuesMap, if (constructor) valuesMap else null, { null })
 }
 
 typealias Render<T> = (T) -> Element?
@@ -67,7 +69,7 @@ typealias ShouldComponentUpdate<T> = (old: T, new: T) -> Boolean
 
 class ComponentSpec<T> {
     var render: Render<T> = { null }
-    var shouldComponentUpdate: ShouldComponentUpdate<T> = { old, new -> old != new }
+    var shouldComponentUpdate: ShouldComponentUpdate<T> = {_, _ -> true }
 }
 
 abstract class UserElement : Element() {
@@ -108,7 +110,14 @@ fun reconcileByKeys(byKeys: Map<Any, Component<*>>, coll: Collection<Element>): 
         coll.map { reconcile(byKeys[it.key], it) }.filterNotNull()
 
 fun assignKeys(elements: List<Element>) {
-    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    val indices = mutableMapOf<KClass<*>, Int>()
+    for (element in elements) {
+        if (element.key == null) {
+            val index = indices.getOrPut(element::class, { 0 })
+            element.key = element::class to index
+            indices[element::class] = index + 1
+        }
+    }
 }
 
 fun reconcileUser(userComponent: UserComponent<*>?, e: UserElement): Component<*>? {
@@ -179,19 +188,19 @@ fun reconcileList(node: Int, attr: KProperty<*>, components: List<Component<*>>?
     return reconciledList
 }
 
-fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List<Int>): Pair<List<Update.RemoveChild>, List<Update.AddChild>> {
+fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List<Int>): Pair<List<Update.Remove>, List<Update.Add>> {
     val lcs = LCS.lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
     val oldNodesSet = oldList.toHashSet()
-    val removes = mutableListOf<Update.RemoveChild>()
-    val adds = mutableListOf<Update.AddChild>()
+    val removes = mutableListOf<Update.Remove>()
+    val adds = mutableListOf<Update.Add>()
     for (c in oldList + newList) {
         if (!lcs.contains(c) && oldNodesSet.contains(c)) {
-            removes.add(Update.RemoveChild(node = node, child = c, attr = attr))
+            removes.add(Update.Remove(node = node, child = c, attr = attr))
         }
     }
     newList.forEachIndexed {i, c ->
         if (!lcs.contains(c)) {
-            adds.add(Update.AddChild(node = node, child = c, attr = attr, index = i))
+            adds.add(Update.Add(node = node, child = c, attr = attr, index = i))
         }
     }
     return removes to adds
