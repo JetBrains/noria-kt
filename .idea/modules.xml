@@ -2,7 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/noria-kt.iml" filepath="$PROJECT_DIR$/.idea/noria-kt.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/noria.iml" filepath="$PROJECT_DIR$/.idea/modules/noria.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/noria-js/noria-js.iml" filepath="$PROJECT_DIR$/.idea/modules/noria-js/noria-js.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/noria-jvm/noria-jvm.iml" filepath="$PROJECT_DIR$/.idea/modules/noria-jvm/noria-jvm.iml" />
     </modules>
   </component>
 </project>
