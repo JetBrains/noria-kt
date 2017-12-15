@@ -4,16 +4,33 @@ import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
-abstract class Element {
+abstract class Props {
+    var key: Any? = null
+}
+
+abstract class View<T : Props> {
+    lateinit var props: T
+
+    open fun shouldUpdate(newProps: T): Boolean = props != newProps
+    abstract fun render(): NElement<*>
+}
+
+typealias Render<T> = (T) -> NElement<*>
+
+sealed class NElement<out T : Props>(val props: T) {
+    val tempId = currentContext.get().nextTempId()
+
     init {
         currentContext.get().createdElements.add(this)
     }
-    var key: Any? = null
-    val tempId: Int = currentContext.get().nextTempId()
+
+    internal class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props)
+    internal class Class<out T : Props>(val kClass: KClass<*>, props: T) : NElement<T>(props)
+    internal class Primitive<out T : PrimitiveProps>(val type: String, props: T) : NElement<T>(props)
 }
 
 sealed class Update {
-    data class MakeNode(val type: KClass<*>, val parameters: Map<KProperty<*>, Any?>) : Update()
+    data class MakeNode(val type: String, val parameters: Map<KProperty<*>, Any?>) : Update()
     data class SetAttr(val node: Int, val attr: KProperty<*>, val value: Any?) : Update()
     data class Add(val node: Int, val attr: KProperty<*>, val child: Any?, val index: Int) : Update()
     data class Remove(val node: Int, val attr: KProperty<*>, val child: Any?) : Update()
@@ -23,8 +40,8 @@ sealed class Update {
 data class ReconciliationContext(val updates: MutableList<Update> = mutableListOf(),
                                  var nextNode: Int = 0,
                                  var nextTempId: Int = 0,
-                                 val createdElements: MutableList<Element> = mutableListOf(),
-                                 val byTempId: MutableMap<Int, Component<*>> = mutableMapOf()) {
+                                 val createdElements: MutableList<NElement<*>> = mutableListOf(),
+                                 val byTempId: MutableMap<Int, Instance> = mutableMapOf()) {
     fun supply(u: Update) {
         updates.add(u)
     }
@@ -47,112 +64,116 @@ class MapProperty<T>(val m: MutableMap<KProperty<*>, Any?>,
     }
 }
 
-abstract class PrimitiveElement : Element() {
+abstract class PrimitiveProps : Props() {
     val constructorParameters = mutableMapOf<KProperty<*>, Any?>()
     val componentsMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : Element> element(constructor: Boolean = false) =
+    fun <T : Props> element(constructor: Boolean = false) =
             MapProperty(componentsMap, if (constructor) constructorParameters else null, { null })
 
     val childrenMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : List<Element>> elementList() =
-            MapProperty(childrenMap, null, { mutableListOf<Element>() as T })
+    fun <T : List<NElement<*>>> elementList() =
+            MapProperty(childrenMap, null, { mutableListOf<NElement<*>>() as T })
 
     val valuesMap = mutableMapOf<KProperty<*>, Any?>()
     fun <T> value(constructor: Boolean = false) =
             MapProperty<T>(valuesMap, if (constructor) valuesMap else null, { null })
 }
 
-typealias ShouldComponentUpdate<T> = (old: T, new: T) -> Boolean
+abstract class Instance(val element: NElement<*>,
+                        val node: Int?)
 
-class ComponentSpec<T> {
-    var render: Render<T> = { TODO() }
-    var shouldComponentUpdate: ShouldComponentUpdate<T> = {_, _ -> true }
-}
+class InstanceRef(c: Instance) : Instance(c.element, c.node)
 
-abstract class UserElement : Element() {
-    var spec: ComponentSpec<*>? = null
-}
+class UserInstance(element: NElement<*>, node: Int?,
+                   val view: View<*>?,
+                   val byKeys: Map<Any, Instance> = mutableMapOf(),
+                   val subst: Instance?) : Instance(element, node)
 
-abstract class Component<out T : Element>(val element: T,
-                                          val node: Int?)
+class PrimitiveInstance(element: NElement<*>, node: Int,
+                        val childrenProps: Map<KProperty<*>, List<Instance>>,
+                        val elementProps: Map<KProperty<*>, Instance?>,
+                        val valueProps: Map<KProperty<*>, *>) : Instance(element, node)
 
-class ComponentRef<out T: Element>(c: Component<T>): Component<T>(c.element, c.node)
-
-class UserComponent<out T : Element>(element: T, node: Int?,
-                                     val byKeys: Map<Any, Component<*>> = mutableMapOf(),
-                                     val subst: Component<Element>?) : Component<T>(element, node)
-
-class PrimitiveComponent<out T : Element>(element: T, node: Int,
-                                          val childrenProps: Map<KProperty<*>, List<Component<*>>>,
-                                          val elementProps: Map<KProperty<*>, Component<*>?>,
-                                          val valueProps: Map<KProperty<*>, *>) : Component<T>(element, node)
-
-fun reconcile(component: Component<*>?, e: Element?): Component<*>? {
+fun reconcile(component: Instance?, e: NElement<*>?): Instance? {
     if (e == null) return null
     val alreadyReconciled = currentContext.get().byTempId[e.tempId]
     if (alreadyReconciled != null)
-        return ComponentRef(alreadyReconciled)
+        return InstanceRef(alreadyReconciled)
     val newComponent = when {
-        e is PrimitiveElement -> reconcilePrimitive(component as PrimitiveComponent<*>?, e)
-        e is UserElement -> reconcileUser(component as UserComponent<*>?, e)
+        e is NElement.Primitive<*> -> reconcilePrimitive(component as PrimitiveInstance?, e)
+        (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e)
         else -> throw IllegalArgumentException("don't know how to reconcile $e")
     }
-    if (newComponent != null) {
-        currentContext.get().byTempId[e.tempId] = newComponent
-    }
+    currentContext.get().byTempId[e.tempId] = newComponent
+
     return newComponent
 }
 
-fun reconcileByKeys(byKeys: Map<Any, Component<*>>, coll: Collection<Element>): List<Component<*>> =
-        coll.map { reconcile(byKeys[it.key], it) }.filterNotNull()
+fun reconcileByKeys(byKeys: Map<Any, Instance>, coll: Collection<NElement<*>>): List<Instance> =
+        coll.map { reconcile(byKeys[it.props.key], it) }.filterNotNull()
 
-fun assignKeys(elements: List<Element>) {
+fun assignKeys(elements: List<NElement<*>>) {
     val indices = mutableMapOf<KClass<*>, Int>()
     for (element in elements) {
-        if (element.key == null) {
+        if (element.props.key == null) {
             val index = indices.getOrPut(element::class, { 0 })
-            element.key = element::class to index
+            element.props.key = element::class to index
             indices[element::class] = index + 1
         }
     }
 }
 
-fun reconcileUser(userComponent: UserComponent<*>?, e: UserElement): Component<*>? {
-    val substElement = (e.spec!! as ComponentSpec<Element>).render(e)
+fun reconcileUser(userComponent: UserInstance?, e: NElement<*>): Instance {
+    var view = userComponent?.view as View<Props>?
+    val substElement = when (e) {
+        is NElement.Fun<*> -> (e as NElement.Fun<Props>).f(e.props)
+        is NElement.Class<*> -> {
+            if (view != null) {
+                if (view.shouldUpdate(e.props))
+                view.props = e.props
+            } else {
+                view = e.kClass.constructors.first().call() as View<Props>
+            }
+            view.render()
+        }
+        is NElement.Primitive -> throw IllegalArgumentException("reconcile user with primitive!")
+    }
     val newSubst = reconcile(userComponent?.subst, substElement)
     val createdElements = currentContext.get().createdElements
     assignKeys(createdElements)
-    val components = reconcileByKeys(userComponent?.byKeys ?: emptyMap<Any, Component<*>>(), createdElements)
+    val components = reconcileByKeys(userComponent?.byKeys ?: emptyMap<Any, Instance>(), createdElements)
     currentContext.get().createdElements.clear()
-    return UserComponent<Element>(
+    return UserInstance(
             element = e,
             node = newSubst?.node,
-            byKeys = components.associateBy { it.element.key!! },
-            subst = newSubst)
+            byKeys = components.associateBy { it.element.props.key!! },
+            subst = newSubst,
+            view = view)
 }
 
 
-fun reconcilePrimitive(primitiveComponent: PrimitiveComponent<*>?, e: PrimitiveElement): PrimitiveComponent<*>? {
+fun reconcilePrimitive(primitiveComponent: PrimitiveInstance?, e: NElement<*>): PrimitiveInstance {
+    e as NElement.Primitive<*>
     if (primitiveComponent != null && primitiveComponent.element::class != e::class) {
         currentContext.get().supply(Update.DestroyNode(primitiveComponent.node!!))
         return reconcilePrimitive(null, e)
     }
     val node: Int = primitiveComponent?.node ?: currentContext.get().makeNode()
     if (primitiveComponent?.node == null) {
-        currentContext.get().supply(Update.MakeNode(e::class, e.constructorParameters)) // TODO: supply constructor parameters
+        currentContext.get().supply(Update.MakeNode(e.type, e.props.constructorParameters)) // TODO: supply constructor parameters
     }
 
-    val childrenMap = mutableMapOf<KProperty<*>, List<Component<*>>>()
-    for ((attr, children) in e.childrenMap) {
-        val childrenNotNull = (children as List<Element?>).filterNotNull()
+    val childrenMap = mutableMapOf<KProperty<*>, List<Instance>>()
+    for ((attr, children) in e.props.childrenMap) {
+        val childrenNotNull = (children as List<NElement<*>>).filterNotNull()
         assignKeys(childrenNotNull)
         childrenMap[attr] = reconcileList(node, attr, primitiveComponent?.childrenProps?.get(attr), childrenNotNull)
     }
 
-    val componentsMap = mutableMapOf<KProperty<*>, Component<*>?>()
-    for((attr, element) in e.componentsMap) {
+    val componentsMap = mutableMapOf<KProperty<*>, Instance?>()
+    for ((attr, element) in e.props.componentsMap) {
         val oldComponent = primitiveComponent?.elementProps?.get(attr)
-        val newComponent = reconcile(oldComponent, element as Element)
+        val newComponent = reconcile(oldComponent, element as NElement<*>)
         componentsMap[attr] = newComponent
         if (oldComponent?.node != newComponent?.node) {
             currentContext.get().supply(Update.SetAttr(node, attr, newComponent?.node))
@@ -160,14 +181,14 @@ fun reconcilePrimitive(primitiveComponent: PrimitiveComponent<*>?, e: PrimitiveE
     }
 
     val valuesMap = mutableMapOf<KProperty<*>, Any?>()
-    for ((attr, value) in e.valuesMap) {
+    for ((attr, value) in e.props.valuesMap) {
         valuesMap[attr] = value
         if (value != primitiveComponent?.valueProps?.get(value)) {
             currentContext.get().supply(Update.SetAttr(node, attr, value))
         }
     }
 
-    return PrimitiveComponent(
+    return PrimitiveInstance(
             element = e,
             childrenProps = childrenMap,
             elementProps = componentsMap,
@@ -175,8 +196,8 @@ fun reconcilePrimitive(primitiveComponent: PrimitiveComponent<*>?, e: PrimitiveE
             node = node)
 }
 
-fun reconcileList(node: Int, attr: KProperty<*>, components: List<Component<*>>?, elements: List<Element>): List<Component<*>> {
-    val componentsByKeys: Map<Any, Component<*>> = components?.map { it.element.key!! to it }?.toMap() ?: emptyMap()
+fun reconcileList(node: Int, attr: KProperty<*>, components: List<Instance>?, elements: List<NElement<*>>): List<Instance> {
+    val componentsByKeys: Map<Any, Instance> = components?.map { it.element.props.key!! to it }?.toMap() ?: emptyMap()
     val reconciledList = reconcileByKeys(componentsByKeys, elements)
     val (removes, adds) = updateOrder(node, attr, components?.map { it.node }?.filterNotNull() ?: listOf(), reconciledList.map { it.node }.filterNotNull())
     for (update in removes + adds) {
@@ -195,104 +216,10 @@ fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List
             removes.add(Update.Remove(node = node, child = c, attr = attr))
         }
     }
-    newList.forEachIndexed {i, c ->
+    newList.forEachIndexed { i, c ->
         if (!lcs.contains(c)) {
             adds.add(Update.Add(node = node, child = c, attr = attr, index = i))
         }
     }
     return removes to adds
 }
-
-
-
-////////////////////
-//
-//MyComponent {
-//    render() {
-////        var c1 = null
-////        split {
-////            left {
-////                vbox {}
-////                vbox {}
-////            }
-////            right {
-////                vbox {}
-////                vbox {}
-////            }
-////        }
-////
-//
-//        var m = null
-//        TableView {
-//            model {
-//                val m = capture {
-//                    TableViewModel {
-//
-//                    }
-//                }
-//
-//                left {
-//                    + m
-//                }
-//
-//                ref = {
-//                    m.view = it
-//                }
-//
-//            }
-//        }
-//
-//
-//    }
-//}
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//fun <T : Element> component(builder: ComponentSpec<T>.() -> Unit): (T.() -> Unit) -> Component<T>? {
-//    val b = ComponentSpec<T>()
-//    b.builder()
-//    return {
-//
-//    }
-//}
-//
-//data class Div(var attrs: MutableMap<String, Any?> = mutableMapOf(),
-//               var children: MutableList<Component<Element>> = mutableListOf()) : PrimitiveElement()
-//
-//fun <T : PrimitiveElement> primitiveComponent(): (T.() -> Unit) -> Component<T>? {
-//
-//}
-//
-//
-//val div = primitiveComponent<Div>()
-//
-//data class FooProps(var foo: String = "",
-//                    var children: List<Component<Element>>) : Element()
-//
-//val foo = component<FooProps> {
-//    shouldComponentUpdate = { old, new -> old.children != new.children }
-//    render = { fp ->
-//        div {
-//
-//        }
-//    }
-//}
-//
-//data class BarProps(var x: String) : Element()
-//
-//val bar = component<BarProps> {
-//    shouldComponentUpdate { old, new -> old.x != new.x }
-//    render { bp ->
-//        foo {
-//            foo = bp.x
-//        }
-//    }
-//}
