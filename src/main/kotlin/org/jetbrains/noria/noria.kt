@@ -11,7 +11,7 @@ abstract class Props {
 }
 
 interface RenderContext {
-    fun emit(e: NElement<*>)
+    fun <T: NElement<*>> emit(e: T): T
 }
 
 abstract class View<T : Props> {
@@ -45,8 +45,9 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
                                  var nextNode: Int = 0,
                                  val createdElements: MutableList<NElement<*>> = mutableListOf(),
                                  val byTempId: MutableMap<Int, Instance> = mutableMapOf()) : RenderContext {
-    override fun emit(e: NElement<*>) {
+    override fun <T : NElement<*>> emit(e: T): T {
         createdElements.add(e)
+        return e
     }
 
     fun supply(u: Update) {
