@@ -3,9 +3,7 @@ package org.jetbrains.noria
 import kotlin.reflect.KClass
 
 
-open class ContainerProps : Props() {
-    val children = mutableListOf<NElement<*>>()
-
+open class ContainerProps(val children: MutableList<NElement<*>> = mutableListOf()) : Props() {
     operator fun NElement<*>.unaryPlus() {
         children += this
     }

@@ -10,7 +10,9 @@ abstract class Props {
     var key: Any? = null
 }
 
-interface RenderContext
+interface RenderContext {
+    fun emit(e: NElement<*>)
+}
 
 abstract class View<T : Props> {
     lateinit var props: T
@@ -43,6 +45,10 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
                                  var nextNode: Int = 0,
                                  val createdElements: MutableList<NElement<*>> = mutableListOf(),
                                  val byTempId: MutableMap<Int, Instance> = mutableMapOf()) : RenderContext {
+    override fun emit(e: NElement<*>) {
+        createdElements.add(e)
+    }
+
     fun supply(u: Update) {
         updates.add(u)
     }
@@ -100,7 +106,7 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
         val newSubst = reconcile(userComponent?.subst, substElement)
         val createdElements = createdElements
         assignKeys(createdElements)
-        val components = reconcileByKeys(userComponent?.byKeys ?: emptyMap<Any, Instance>(), createdElements)
+        val components = reconcileByKeys(userComponent?.byKeys ?: emptyMap(), createdElements)
         createdElements.clear()
         return UserInstance(
                 element = e,
@@ -119,7 +125,7 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
         }
         val node: Int = primitiveComponent?.node ?: makeNode()
         if (primitiveComponent?.node == null) {
-            supply(Update.MakeNode(e.type, e.props.constructorParameters)) // TODO: supply constructor parameters
+            supply(Update.MakeNode(e.type, e.props.constructorParameters))
         }
 
         val childrenMap = mutableMapOf<KProperty<*>, List<Instance>>()
@@ -158,14 +164,12 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
     fun reconcileList(node: Int, attr: KProperty<*>, components: List<Instance>?, elements: List<NElement<*>>): List<Instance> {
         val componentsByKeys: Map<Any, Instance> = components?.map { it.element.props.key!! to it }?.toMap() ?: emptyMap()
         val reconciledList = reconcileByKeys(componentsByKeys, elements)
-        val (removes, adds) = updateOrder(node, attr, components?.map { it.node }?.filterNotNull() ?: listOf(), reconciledList.map { it.node }.filterNotNull())
+        val (removes, adds) = updateOrder(node, attr, components?.mapNotNull { it.node } ?: listOf(), reconciledList.mapNotNull { it.node })
         for (update in removes + adds) {
             supply(update)
         }
         return reconciledList
     }
-
-
 }
 
 class MapProperty<T>(val m: MutableMap<KProperty<*>, Any?>,
@@ -183,12 +187,12 @@ class MapProperty<T>(val m: MutableMap<KProperty<*>, Any?>,
 abstract class PrimitiveProps : Props() {
     val constructorParameters = mutableMapOf<KProperty<*>, Any?>()
     val componentsMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : Props> element(constructor: Boolean = false) =
-            MapProperty(componentsMap, if (constructor) constructorParameters else null, { null })
+    fun <T : NElement<*>> element(constructor: Boolean = false) =
+            MapProperty<T>(componentsMap, if (constructor) constructorParameters else null, { null })
 
     val childrenMap = mutableMapOf<KProperty<*>, Any?>()
     fun <T : List<NElement<*>>> elementList() =
-            MapProperty(childrenMap, null, { mutableListOf<NElement<*>>() as T })
+            MapProperty<T>(childrenMap, null, { mutableListOf<NElement<*>>() as T })
 
     val valuesMap = mutableMapOf<KProperty<*>, Any?>()
     fun <T> value(constructor: Boolean = false) =
