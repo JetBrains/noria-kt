@@ -207,7 +207,7 @@ fun reconcileList(node: Int, attr: KProperty<*>, components: List<Instance>?, el
 }
 
 fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List<Int>): Pair<List<Update.Remove>, List<Update.Add>> {
-    val lcs = LCS.lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
+    val lcs = lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
     val oldNodesSet = oldList.toHashSet()
     val removes = mutableListOf<Update.Remove>()
     val adds = mutableListOf<Update.Add>()
