@@ -34,8 +34,9 @@ class NSConstraint: PrimitiveProps() {
     var view2: NElement<NSViewProps> by element()
 }
 
+class MyProps(val x: Int = 0) : Props()
 
-class MyMacComponent: View<Props>() {
+class MyMacComponent: View<MyProps>() {
     override fun RenderContext.render(): NElement<*> {
         val v1 = "NSView" with NSViewProps().apply {
             subviews.add("NSView" with NSViewProps())
@@ -51,7 +52,9 @@ class MyMacComponent: View<Props>() {
 
         return "NSView" with NSViewProps().apply {
             subviews.add(v1)
-            subviews.add(v2)
+            if (props.x > 0) {
+                subviews.add(v2)
+            }
         }
     }
 

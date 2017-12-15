@@ -91,14 +91,21 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
             is NElement.Fun<*> -> (e as NElement.Fun<Props>).f(e.props)
             is NElement.Class<*> -> {
                 if (view != null) {
-                    if (view.shouldUpdate(e.props))
+                    if (view.shouldUpdate(e.props)) {
                         view.props = e.props
+                        with(view) {
+                            render()
+                        }
+                    } else {
+                        view.props = e.props
+                        userComponent!!.element
+                    }
                 } else {
                     view = (e.kClass as KClass<View<Props>>).instantiate()
-                }
-
-                with(view) {
-                    render()
+                    view.props = e.props
+                    with(view) {
+                        render()
+                    }
                 }
             }
 
