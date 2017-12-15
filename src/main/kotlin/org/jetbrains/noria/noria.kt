@@ -103,11 +103,13 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
 
             is NElement.Primitive -> throw IllegalArgumentException("reconcile user with primitive!")
         }
-        val newSubst = reconcile(userComponent?.subst, substElement)
-        val createdElements = createdElements
+
         assignKeys(createdElements)
         val components = reconcileByKeys(userComponent?.byKeys ?: emptyMap(), createdElements)
         createdElements.clear()
+
+        val newSubst = reconcile(userComponent?.subst, substElement)
+
         return UserInstance(
                 element = e,
                 node = newSubst?.node,
