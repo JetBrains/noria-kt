@@ -6,7 +6,7 @@ import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
-abstract class Props {
+open class Props {
     var key: Any? = null
 }
 
@@ -34,7 +34,7 @@ sealed class NElement<out T : Props>(val props: T) {
 }
 
 sealed class Update {
-    data class MakeNode(val type: String, val parameters: Map<KProperty<*>, Any?>) : Update()
+    data class MakeNode(val node: Int, val type: String, val parameters: Map<KProperty<*>, Any?>) : Update()
     data class SetAttr(val node: Int, val attr: KProperty<*>, val value: Any?) : Update()
     data class Add(val node: Int, val attr: KProperty<*>, val child: Any?, val index: Int) : Update()
     data class Remove(val node: Int, val attr: KProperty<*>, val child: Any?) : Update()
@@ -128,7 +128,7 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
         }
         val node: Int = primitiveComponent?.node ?: makeNode()
         if (primitiveComponent?.node == null) {
-            supply(Update.MakeNode(e.type, e.props.constructorParameters))
+            supply(Update.MakeNode(node, e.type, e.props.constructorParameters))
         }
 
         val childrenMap = mutableMapOf<KProperty<*>, List<Instance>>()
