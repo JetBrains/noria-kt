@@ -1,2 +1,17 @@
-.idea/workspace.xml
 out/
+
+# IntelliJ IDEA pro
+.idea/modules
+.idea/modules.xml
+.idea/libraries
+.idea/copyright
+.idea/workspace.xml
+.idea/uiDesigner.xml
+.idea/gradle_extensions.xml
+.idea/gradle.xml
+.idea/compiler.xml
+.idea/vcs.xml
+.idea/misc.xml
+
+.gradle
+build/

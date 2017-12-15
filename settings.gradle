@@ -1,0 +1,3 @@
+rootProject.name = 'noria'
+
+include 'noria-jvm', 'noria-js'
