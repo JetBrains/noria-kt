@@ -33,29 +33,3 @@ class NSConstraint: PrimitiveProps() {
     var view1: NElement<NSViewProps> by element()
     var view2: NElement<NSViewProps> by element()
 }
-
-data class MyProps(val x: Int = 0) : Props()
-
-class MyMacComponent: View<MyProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        val v1 = "NSView" with NSViewProps().apply {
-            subviews.add("NSView" with NSViewProps())
-        }
-        val v2 = "NSView" with NSViewProps().apply {
-            subviews.add("NSView" with NSViewProps())
-        }
-
-        emit("NSLayoutConstraint" with NSConstraint().apply {
-            view1 = v1
-            view2 = v2
-        })
-
-        return "NSView" with NSViewProps().apply {
-            subviews.add(v1)
-            if (props.x > 0) {
-                subviews.add(v2)
-            }
-        }
-    }
-
-}
