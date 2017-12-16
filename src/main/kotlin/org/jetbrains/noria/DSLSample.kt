@@ -34,7 +34,7 @@ class NSConstraint: PrimitiveProps() {
     var view2: NElement<NSViewProps> by element()
 }
 
-class MyProps(val x: Int = 0) : Props()
+data class MyProps(val x: Int = 0) : Props()
 
 class MyMacComponent: View<MyProps>() {
     override fun RenderContext.render(): NElement<*> {

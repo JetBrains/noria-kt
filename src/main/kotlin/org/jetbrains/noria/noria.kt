@@ -18,7 +18,9 @@ abstract class View<T : Props> {
     val props: T get() = _props ?: error("Props are not initialized yet")
     internal var _props: T? = null
 
-    open fun shouldUpdate(newProps: T): Boolean = props != newProps
+    open fun shouldUpdate(newProps: T): Boolean {
+        return props != newProps
+    }
     abstract fun RenderContext.render(): NElement<*>
 }
 
@@ -29,9 +31,9 @@ var nextTempId: Int = 0
 sealed class NElement<out T : Props>(val props: T) {
     val tempId: Int = nextTempId++
 
-    internal class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props)
-    internal class Class<out T : Props>(val kClass: KClass<*>, props: T) : NElement<T>(props)
-    internal class Primitive<out T : PrimitiveProps>(val type: String, props: T) : NElement<T>(props)
+    class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props)
+    class Class<out T : Props>(val kClass: KClass<*>, props: T) : NElement<T>(props)
+    class Primitive<out T : PrimitiveProps>(val type: String, props: T) : NElement<T>(props)
 }
 
 sealed class Update {
@@ -56,6 +58,8 @@ class ReconciliationContext : RenderContext {
     private fun supply(u: Update) {
         updates.add(u)
     }
+
+    fun updates(): List<Update> = updates
 
     private fun makeNode() = nextNode++
 
