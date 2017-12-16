@@ -31,9 +31,9 @@ var nextTempId: Int = 0
 sealed class NElement<out T : Props>(val props: T) {
     val tempId: Int = nextTempId++
 
-    class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props)
-    class Class<out T : Props>(val kClass: KClass<*>, props: T) : NElement<T>(props)
-    class Primitive<out T : PrimitiveProps>(val type: String, props: T) : NElement<T>(props)
+    internal class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props)
+    internal class Class<out T : Props>(val kClass: KClass<*>, props: T) : NElement<T>(props)
+    internal class Primitive<out T : PrimitiveProps>(val type: String, props: T) : NElement<T>(props)
 }
 
 sealed class Update {
