@@ -15,7 +15,8 @@ interface RenderContext {
 }
 
 abstract class View<T : Props> {
-    lateinit var props: T
+    val props: T get() = _props ?: error("Props are not initialized yet")
+    internal var _props: T? = null
 
     open fun shouldUpdate(newProps: T): Boolean = props != newProps
     abstract fun RenderContext.render(): NElement<*>
@@ -41,20 +42,22 @@ sealed class Update {
     data class DestroyNode(val node: Int) : Update()
 }
 
-data class ReconciliationContext(val updates: MutableList<Update> = mutableListOf(),
-                                 var nextNode: Int = 0,
-                                 val createdElements: MutableList<NElement<*>> = mutableListOf(),
-                                 val byTempId: MutableMap<Int, Instance> = mutableMapOf()) : RenderContext {
+class ReconciliationContext : RenderContext {
+    private val updates: MutableList<Update> = mutableListOf()
+    private var nextNode: Int = 0
+    private val createdElements: MutableList<NElement<*>> = mutableListOf()
+    private val byTempId: MutableMap<Int, Instance> = mutableMapOf()
+
     override fun <T : NElement<*>> emit(e: T): T {
         createdElements.add(e)
         return e
     }
 
-    fun supply(u: Update) {
+    private fun supply(u: Update) {
         updates.add(u)
     }
 
-    fun makeNode() = nextNode++
+    private fun makeNode() = nextNode++
 
     fun reconcile(component: Instance?, e: NElement<*>?): Instance? {
         if (e == null) return null
@@ -71,10 +74,11 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
         return newComponent
     }
 
-    fun reconcileByKeys(byKeys: Map<Any, Instance>, coll: Collection<NElement<*>>): List<Instance> =
-            coll.map { reconcile(byKeys[it.props.key], it) }.filterNotNull()
+    private fun reconcileByKeys(byKeys: Map<Any, Instance>, coll: Collection<NElement<*>>): List<Instance> {
+        return coll.mapNotNull { reconcile(byKeys[it.props.key], it) }
+    }
 
-    fun assignKeys(elements: List<NElement<*>>) {
+    private fun assignKeys(elements: List<NElement<*>>) {
         val indices = mutableMapOf<KClass<*>, Int>()
         for (element in elements) {
             if (element.props.key == null) {
@@ -85,26 +89,22 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
         }
     }
 
-    fun reconcileUser(userComponent: UserInstance?, e: NElement<*>): Instance {
+    private fun reconcileUser(userComponent: UserInstance?, e: NElement<*>): Instance {
         var view = userComponent?.view as View<Props>?
         val substElement = when (e) {
             is NElement.Fun<*> -> (e as NElement.Fun<Props>).f(e.props)
             is NElement.Class<*> -> {
-                if (view != null) {
-                    if (view.shouldUpdate(e.props)) {
-                        view.props = e.props
-                        with(view) {
-                            render()
-                        }
-                    } else {
-                        view.props = e.props
-                        userComponent!!.element
-                    }
-                } else {
+                if (view == null) {
                     view = (e.kClass as KClass<View<Props>>).instantiate()
-                    view.props = e.props
-                    with(view) {
+                }
+
+                view.run {
+                    if (view._props == null || shouldUpdate(e.props)) {
+                        _props = e.props
                         render()
+                    } else {
+                        _props = e.props
+                        userComponent!!.element
                     }
                 }
             }
@@ -127,7 +127,7 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
     }
 
 
-    fun reconcilePrimitive(primitiveComponent: PrimitiveInstance?, e: NElement<*>): PrimitiveInstance {
+    private fun reconcilePrimitive(primitiveComponent: PrimitiveInstance?, e: NElement<*>): PrimitiveInstance {
         e as NElement.Primitive<*>
         if (primitiveComponent != null && primitiveComponent.element::class != e::class) {
             supply(Update.DestroyNode(primitiveComponent.node!!))
@@ -171,7 +171,7 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
                 node = node)
     }
 
-    fun reconcileList(node: Int, attr: KProperty<*>, components: List<Instance>?, elements: List<NElement<*>>): List<Instance> {
+    private fun reconcileList(node: Int, attr: KProperty<*>, components: List<Instance>?, elements: List<NElement<*>>): List<Instance> {
         val componentsByKeys: Map<Any, Instance> = components?.map { it.element.props.key!! to it }?.toMap() ?: emptyMap()
         val reconciledList = reconcileByKeys(componentsByKeys, elements)
         val (removes, adds) = updateOrder(node, attr, components?.mapNotNull { it.node } ?: listOf(), reconciledList.mapNotNull { it.node })
@@ -182,9 +182,9 @@ data class ReconciliationContext(val updates: MutableList<Update> = mutableListO
     }
 }
 
-class MapProperty<T>(val m: MutableMap<KProperty<*>, Any?>,
-                     val m2: MutableMap<KProperty<*>, Any?>?,
-                     val default: () -> T?) : ReadWriteProperty<Any, T> {
+class MapProperty<T>(private val m: MutableMap<KProperty<*>, Any?>,
+                     private val m2: MutableMap<KProperty<*>, Any?>?,
+                     private val default: () -> T?) : ReadWriteProperty<Any, T> {
     override fun getValue(thisRef: Any, property: KProperty<*>): T =
             m.getOrPut(property, default) as T
 
