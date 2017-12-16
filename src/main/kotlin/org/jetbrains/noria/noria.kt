@@ -44,7 +44,19 @@ sealed class Update {
     data class DestroyNode(val node: Int) : Update()
 }
 
-class ReconciliationContext : RenderContext {
+fun createInstance(e: NElement<*>) : Pair<Instance, List<Update>> {
+    return ReconciliationContext().run {
+        reconcile(null, e)!! to updates()
+    }
+}
+
+fun reconcile(old: Instance, e: NElement<*>) : Pair<Instance, List<Update>> {
+    return ReconciliationContext().run {
+        reconcile(old, e)!! to updates()
+    }
+}
+
+internal class ReconciliationContext : RenderContext {
     private val updates: MutableList<Update> = mutableListOf()
     private var nextNode: Int = 0
     private val createdElements: MutableList<NElement<*>> = mutableListOf()
