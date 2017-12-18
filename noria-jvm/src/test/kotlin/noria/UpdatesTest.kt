@@ -44,10 +44,10 @@ class MyMacComponent: View<MyProps>() {
 class UpdatesTest {
 
     @Test fun `Reconciliation keeps the view and adds update for new subview`() {
-        val (component, _) = createInstance(MyMacComponent::class with MyProps())
+        val (component, _) = MockPlatform.createInstance(MyMacComponent::class with MyProps())
         val view = (component as UserInstance).view as? MyMacComponent ?: fail("View expected to be MyMacComponent")
 
-        val (newComponent, updates) = reconcile(component, MyMacComponent::class with MyProps(x = 1))
+        val (newComponent, updates) = MockPlatform.reconcile(component, MyMacComponent::class with MyProps(x = 1))
 
         assertTrue((newComponent as UserInstance).view === view, "View is expected to be kept the same. It's just props shall be changed")
         assertEquals(1, view.props.x, "Props expected to be updated")

@@ -54,20 +54,12 @@ enum class JustifyContent {
     override fun toString() = name.hyphenize()
 }
 
-class VBox : Container<BoxProps>() {
-    override fun RenderContext.render(): NElement<*> = renderVBox(props)
-}
-
-inline fun vbox(builder: BoxProps.() -> Unit) = VBox::class.with(BoxProps().apply {
+inline fun RenderContext.vbox(builder: BoxProps.() -> Unit) = platform.vbox().with(BoxProps().apply {
     flexDirection = FlexDirection.column
     builder()
 })
 
-class HBox : Container<BoxProps>() {
-    override fun RenderContext.render(): NElement<*> = renderHBox(props)
-}
-
-inline fun hbox(builder: BoxProps.() -> Unit) = HBox::class.with(BoxProps().apply {
+inline fun RenderContext.hbox(builder: BoxProps.() -> Unit) = platform.hbox().with(BoxProps().apply {
     flexDirection = FlexDirection.row
     builder()
 })

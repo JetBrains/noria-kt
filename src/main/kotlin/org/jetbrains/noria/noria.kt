@@ -11,6 +11,7 @@ open class Props {
 }
 
 interface RenderContext {
+    val platform: Platform
     fun <T: NElement<*>> emit(e: T): T
 }
 
@@ -44,19 +45,19 @@ sealed class Update {
     data class DestroyNode(val node: Int) : Update()
 }
 
-fun createInstance(e: NElement<*>) : Pair<Instance, List<Update>> {
-    return ReconciliationContext().run {
+fun Platform.createInstance(e: NElement<*>) : Pair<Instance, List<Update>> {
+    return ReconciliationContext(this).run {
         reconcile(null, e)!! to updates()
     }
 }
 
-fun reconcile(old: Instance, e: NElement<*>) : Pair<Instance, List<Update>> {
-    return ReconciliationContext().run {
+fun Platform.reconcile(old: Instance, e: NElement<*>) : Pair<Instance, List<Update>> {
+    return ReconciliationContext(this).run {
         reconcile(old, e)!! to updates()
     }
 }
 
-internal class ReconciliationContext : RenderContext {
+internal class ReconciliationContext(override val platform: Platform) : RenderContext {
     private val updates: MutableList<Update> = mutableListOf()
     private var nextNode: Int = 0
     private val createdElements: MutableList<NElement<*>> = mutableListOf()
