@@ -12,7 +12,7 @@ open class Props {
 
 interface RenderContext {
     val platform: Platform
-    fun <T: NElement<*>> emit(e: T): T
+    fun <T : NElement<*>> emit(e: T): T
 }
 
 abstract class View<T : Props> {
@@ -40,28 +40,20 @@ sealed class NElement<out T : Props>(val props: T) {
 sealed class Update {
     data class MakeNode(val node: Int, val type: String, val parameters: Map<KProperty<*>, Any?>) : Update()
     data class SetAttr(val node: Int, val attr: KProperty<*>, val value: Any?) : Update()
+    data class SetCallback(val node: Int, val attr: String, val async: Boolean) : Update()
+    data class RemoveCallback(val node: Int, val attr: String) : Update()
     data class Add(val node: Int, val attr: KProperty<*>, val child: Any?, val index: Int) : Update()
     data class Remove(val node: Int, val attr: KProperty<*>, val child: Any?) : Update()
     data class DestroyNode(val node: Int) : Update()
 }
 
-fun Platform.createInstance(e: NElement<*>) : Pair<Instance, List<Update>> {
-    return ReconciliationContext(this).run {
-        reconcile(null, e)!! to updates()
-    }
-}
-
-fun Platform.reconcile(old: Instance, e: NElement<*>) : Pair<Instance, List<Update>> {
-    return ReconciliationContext(this).run {
-        reconcile(old, e)!! to updates()
-    }
-}
-
-internal class ReconciliationContext(override val platform: Platform) : RenderContext {
+class ReconciliationContext(override val platform: Platform) : RenderContext {
     private val updates: MutableList<Update> = mutableListOf()
     private var nextNode: Int = 0
     private val createdElements: MutableList<NElement<*>> = mutableListOf()
     private val byTempId: MutableMap<Int, Instance> = mutableMapOf()
+    private val callbacksTable: MutableMap<Int, MutableMap<String, CallbackInfo<*>>> = mutableMapOf()
+    private var root: Instance? = null
 
     override fun <T : NElement<*>> emit(e: T): T {
         createdElements.add(e)
@@ -72,11 +64,16 @@ internal class ReconciliationContext(override val platform: Platform) : RenderCo
         updates.add(u)
     }
 
-    fun updates(): List<Update> = updates
-
     private fun makeNode() = nextNode++
 
-    fun reconcile(component: Instance?, e: NElement<*>?): Instance? {
+    fun reconcile(e: NElement<*>): List<Update> {
+        root = reconcileImpl(root, e)
+        val updatesCopy = updates.toCollection(mutableListOf())
+        updates.clear()
+        return updatesCopy
+    }
+
+    private fun reconcileImpl(component: Instance?, e: NElement<*>?): Instance? {
         if (e == null) return null
         val alreadyReconciled = byTempId[e.tempId]
         if (alreadyReconciled != null)
@@ -92,7 +89,7 @@ internal class ReconciliationContext(override val platform: Platform) : RenderCo
     }
 
     private fun reconcileByKeys(byKeys: Map<Any, Instance>, coll: Collection<NElement<*>>): List<Instance> {
-        return coll.mapNotNull { reconcile(byKeys[it.props.key], it) }
+        return coll.mapNotNull { reconcileImpl(byKeys[it.props.key], it) }
     }
 
     private fun assignKeys(elements: List<NElement<*>>) {
@@ -133,7 +130,7 @@ internal class ReconciliationContext(override val platform: Platform) : RenderCo
         val components = reconcileByKeys(userComponent?.byKeys ?: emptyMap(), createdElements)
         createdElements.clear()
 
-        val newSubst = reconcile(userComponent?.subst, substElement)
+        val newSubst = reconcileImpl(userComponent?.subst, substElement)
 
         return UserInstance(
                 element = e,
@@ -165,7 +162,7 @@ internal class ReconciliationContext(override val platform: Platform) : RenderCo
         val componentsMap = mutableMapOf<KProperty<*>, Instance?>()
         for ((attr, element) in e.props.componentsMap) {
             val oldComponent = primitiveComponent?.elementProps?.get(attr)
-            val newComponent = reconcile(oldComponent, element as NElement<*>)
+            val newComponent = reconcileImpl(oldComponent, element as NElement<*>)
             componentsMap[attr] = newComponent
             if (oldComponent?.node != newComponent?.node) {
                 supply(Update.SetAttr(node, attr, newComponent?.node))
@@ -179,6 +176,21 @@ internal class ReconciliationContext(override val platform: Platform) : RenderCo
                 supply(Update.SetAttr(node, attr, value))
             }
         }
+
+        val callbacks = callbacksTable[node] ?: mutableMapOf()
+        for ((attr, _) in callbacks) {
+            if (!e.props.callbacks.containsKey(attr)) {
+                supply(Update.RemoveCallback(node, attr))
+            }
+        }
+
+        for ((attr, value) in e.props.callbacks) {
+            if (!callbacks.containsKey(attr)) {
+                supply(Update.SetCallback(node, attr, value.async))
+            }
+            callbacks[attr] = value
+        }
+        callbacksTable[node] = callbacks
 
         return PrimitiveInstance(
                 element = e,
@@ -197,33 +209,92 @@ internal class ReconciliationContext(override val platform: Platform) : RenderCo
         }
         return reconciledList
     }
-}
 
-class MapProperty<T>(private val m: MutableMap<KProperty<*>, Any?>,
-                     private val m2: MutableMap<KProperty<*>, Any?>?,
-                     private val default: () -> T?) : ReadWriteProperty<Any, T> {
-    override fun getValue(thisRef: Any, property: KProperty<*>): T =
-            m.getOrPut(property, default) as T
-
-    override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-        m[property] = value
-        m2?.put(property, value)
+    fun handleEvent(e: EventImpl<Any>) {
+        val callbackInfo = callbacksTable[e.source]?.get(e.name)
+        if (callbackInfo != null) {
+            (callbackInfo as CallbackInfo<Any>).cb(e)
+        }
     }
 }
 
+interface Event<T> {
+    val data: T
+    fun stopPropagation()
+    fun sudoPreventDefault()
+}
+
+class EventImpl<T>(var source: Int,
+                   val name: String,
+                   val async: Boolean,
+                   override val data: T,
+                   var propagate: Boolean = true,
+                   var preventDefault: Boolean = false): Event<T> {
+    override fun sudoPreventDefault() {
+        preventDefault = true
+    }
+
+    override fun stopPropagation() {
+        propagate = false
+    }
+}
+
+typealias Handler<T> = (Event<T>) -> Unit
+
+data class CallbackInfo<T>(val async: Boolean, val cb: Handler<T>)
+
 abstract class PrimitiveProps : Props() {
     val constructorParameters = mutableMapOf<KProperty<*>, Any?>()
-    val componentsMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : NElement<*>> element(constructor: Boolean = false) =
-            MapProperty<T>(componentsMap, if (constructor) constructorParameters else null, { null })
 
-    val childrenMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T : List<NElement<*>>> elementList() =
-            MapProperty<T>(childrenMap, null, { mutableListOf<NElement<*>>() as T })
+    val componentsMap = mutableMapOf<KProperty<*>, Any?>()
+    fun <T : NElement<*>> element(constructor: Boolean = false): ReadWriteProperty<Any, T> =
+            object : ReadWriteProperty<Any, T> {
+                override fun getValue(thisRef: Any, property: KProperty<*>): T =
+                        componentsMap[property] as T
+
+                override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
+                    if (constructor) {
+                        constructorParameters[property] = value
+                    }
+                    componentsMap[property] = value
+                }
+            }
 
     val valuesMap = mutableMapOf<KProperty<*>, Any?>()
-    fun <T> value(constructor: Boolean = false) =
-            MapProperty<T>(valuesMap, if (constructor) valuesMap else null, { null })
+    fun <T> value(constructor: Boolean = false): ReadWriteProperty<Any, T> =
+            object : ReadWriteProperty<Any, T> {
+                override fun getValue(thisRef: Any, property: KProperty<*>): T =
+                        valuesMap[property] as T
+
+                override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
+                    if (constructor) {
+                        constructorParameters[property] = value
+                    }
+                    valuesMap[property] = value
+                }
+            }
+
+    val childrenMap = mutableMapOf<KProperty<*>, Any?>()
+    fun <T : List<NElement<*>>> elementList(): ReadWriteProperty<Any, T> =
+            object : ReadWriteProperty<Any, T> {
+                override fun getValue(thisRef: Any, property: KProperty<*>): T =
+                        childrenMap.getOrPut(property, { mutableListOf<Any?>() }) as T
+
+                override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
+                    childrenMap[property] = value
+                }
+            }
+
+    val callbacks = mutableMapOf<String, CallbackInfo<*>>()
+    fun <T> handler(): ReadWriteProperty<Any, CallbackInfo<T>> =
+            object : ReadWriteProperty<Any, CallbackInfo<T>> {
+                override fun getValue(thisRef: Any, property: KProperty<*>): CallbackInfo<T> =
+                        callbacks[property.name] as CallbackInfo<T>
+
+                override fun setValue(thisRef: Any, property: KProperty<*>, value: CallbackInfo<T>) {
+                    callbacks[property.name] = value
+                }
+            }
 }
 
 abstract class Instance(val element: NElement<*>,

@@ -17,20 +17,8 @@ fun RenderContext.testNodes() : NElement<*> {
     }
 }
 
-
 data class LinkProps(val href: String) : Props()
 
 fun link(props: LinkProps) : NElement<*> {
     TODO()
-}
-
-
-
-class NSViewProps: PrimitiveProps() {
-    val subviews: MutableList<NElement<NSViewProps>> by elementList()
-}
-
-class NSConstraint: PrimitiveProps() {
-    var view1: NElement<NSViewProps> by element()
-    var view2: NElement<NSViewProps> by element()
 }

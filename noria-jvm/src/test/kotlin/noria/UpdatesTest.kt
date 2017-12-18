@@ -1,21 +1,22 @@
 package noria
 
-import org.jetbrains.noria.NElement
-import org.jetbrains.noria.NSConstraint
-import org.jetbrains.noria.NSViewProps
-import org.jetbrains.noria.Props
-import org.jetbrains.noria.RenderContext
-import org.jetbrains.noria.Update
-import org.jetbrains.noria.UserInstance
-import org.jetbrains.noria.View
-import org.jetbrains.noria.createInstance
-import org.jetbrains.noria.reconcile
-import org.jetbrains.noria.with
+import org.jetbrains.noria.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
+data class Click(val buttonNum: Int, val clickCount: Int)
+
+class NSViewProps: PrimitiveProps() {
+    val subviews: MutableList<NElement<NSViewProps>> by elementList()
+    var onClick by handler<Click>()
+}
+
+class NSConstraint: PrimitiveProps() {
+    var view1: NElement<NSViewProps> by element()
+    var view2: NElement<NSViewProps> by element()
+}
 
 data class MyProps(val x: Int = 0) : Props()
 class MyMacComponent: View<MyProps>() {
@@ -25,6 +26,9 @@ class MyMacComponent: View<MyProps>() {
         }
         val v2 = "NSView" with NSViewProps().apply {
             subviews.add("NSView" with NSViewProps())
+            onClick = CallbackInfo(true) { event ->
+                println("hello")
+            }
         }
 
         emit("NSLayoutConstraint" with NSConstraint().apply {
@@ -44,13 +48,9 @@ class MyMacComponent: View<MyProps>() {
 class UpdatesTest {
 
     @Test fun `Reconciliation keeps the view and adds update for new subview`() {
-        val (component, _) = MockPlatform.createInstance(MyMacComponent::class with MyProps())
-        val view = (component as UserInstance).view as? MyMacComponent ?: fail("View expected to be MyMacComponent")
-
-        val (newComponent, updates) = MockPlatform.reconcile(component, MyMacComponent::class with MyProps(x = 1))
-
-        assertTrue((newComponent as UserInstance).view === view, "View is expected to be kept the same. It's just props shall be changed")
-        assertEquals(1, view.props.x, "Props expected to be updated")
+        val c = ReconciliationContext(MockPlatform)
+        val updates0 = c.reconcile(MyMacComponent::class with MyProps())
+        val updates = c.reconcile(MyMacComponent::class with MyProps(x = 1))
         assertTrue(updates.single() is Update.Add, "There should be single update of adding subview")
     }
 }
