@@ -1,5 +1,5 @@
 buildscript {
-    ext.kotlin_version = '1.2.0'
+    apply from: '../versions.gradle'
 
     repositories {
         mavenCentral()
@@ -16,6 +16,6 @@ repositories {
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
-    expectedBy project(":")
+    expectedBy project(":noria-common")
     testCompile "org.jetbrains.kotlin:kotlin-test-js:$kotlin_version"
 }
