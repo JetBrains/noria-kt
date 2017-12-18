@@ -7,7 +7,9 @@ fun testNodes() : NElement<*> {
     HBox::class with BoxProps()
     
     return vbox {
-        +vbox(alignItems = "center") {
+        +vbox {
+            alignItems = Align.center
+            
             +vbox {
                 +hbox {  }
                 +hbox {  }
