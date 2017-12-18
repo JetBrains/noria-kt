@@ -210,38 +210,34 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
         return reconciledList
     }
 
-    fun handleEvent(e: EventImpl<Any>) {
+    fun handleEvent(e: EventInfo) {
         val callbackInfo = callbacksTable[e.source]?.get(e.name)
         if (callbackInfo != null) {
-            (callbackInfo as CallbackInfo<Any>).cb(e)
+            (callbackInfo as CallbackInfo<Event>).cb(e.event)
         }
     }
 }
 
-interface Event<T> {
-    val data: T
-    fun stopPropagation()
-    fun sudoPreventDefault()
-}
+abstract class Event {
+    var propagate: Boolean = true
+    var preventDefault: Boolean = false
 
-class EventImpl<T>(var source: Int,
-                   val name: String,
-                   val async: Boolean,
-                   override val data: T,
-                   var propagate: Boolean = true,
-                   var preventDefault: Boolean = false): Event<T> {
-    override fun sudoPreventDefault() {
-        preventDefault = true
-    }
-
-    override fun stopPropagation() {
+    fun stopPropagation() {
         propagate = false
     }
+
+    fun sudoPreventDefault() {
+        preventDefault = true
+    }
 }
 
-typealias Handler<T> = (Event<T>) -> Unit
+class EventInfo(var source: Int,
+                val name: String,
+                val event: Event)
 
-data class CallbackInfo<T>(val async: Boolean, val cb: Handler<T>)
+typealias Handler<T> = (T) -> Unit
+
+data class CallbackInfo<in T: Event>(val async: Boolean, val cb: Handler<T>)
 
 abstract class PrimitiveProps : Props() {
     val constructorParameters = mutableMapOf<KProperty<*>, Any?>()
@@ -286,7 +282,7 @@ abstract class PrimitiveProps : Props() {
             }
 
     val callbacks = mutableMapOf<String, CallbackInfo<*>>()
-    fun <T> handler(): ReadWriteProperty<Any, CallbackInfo<T>> =
+    fun <T: Event> handler(): ReadWriteProperty<Any, CallbackInfo<T>> =
             object : ReadWriteProperty<Any, CallbackInfo<T>> {
                 override fun getValue(thisRef: Any, property: KProperty<*>): CallbackInfo<T> =
                         callbacks[property.name] as CallbackInfo<T>

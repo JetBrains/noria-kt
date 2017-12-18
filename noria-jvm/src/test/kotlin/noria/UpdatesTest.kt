@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
-data class Click(val buttonNum: Int, val clickCount: Int)
+data class Click(val buttonNum: Int, val clickCount: Int) : Event()
 
 class NSViewProps: PrimitiveProps() {
     val subviews: MutableList<NElement<NSViewProps>> by elementList()
