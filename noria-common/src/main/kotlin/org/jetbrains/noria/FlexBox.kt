@@ -12,7 +12,7 @@ enum class FlexWrap {
     override fun toString() = name.hyphenize()
 }
 
-class BoxProps() : ContainerProps() {
+class BoxProps : ContainerProps() {
     var flexDirection: FlexDirection = FlexDirection.row
     var flexWrap: FlexWrap? = null
     var justifyContent: JustifyContent? = null
