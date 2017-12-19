@@ -10,7 +10,7 @@ import org.jetbrains.noria.with
 class FlexBox : Container<BoxProps>() {
     override fun RenderContext.render(): NElement<*> {
         return "div" with DomProps().apply {
-            css = buildString {
+            style = buildString {
                 append("display:flex;")
                 append("flex-direction:${props.flexDirection};")
 
