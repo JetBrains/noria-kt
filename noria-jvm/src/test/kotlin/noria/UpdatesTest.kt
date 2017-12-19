@@ -49,7 +49,44 @@ class TestProps1 : PrimitiveProps() {
     val children: MutableList<NElement<*>> by elementList()
 }
 
+
+class TextNodeProps : PrimitiveProps() {
+    var text: String by value()
+}
+
+data class LabelProps(val text: String) : Props()
+class Label : View<LabelProps>() {
+    override fun RenderContext.render(): NElement<*> {
+        return "text-node" with TextNodeProps().apply { text = props.text }
+    }
+}
+
+data class SimpleContainerProps(val x: Int) : Props()
+class SimpleContainer : View<SimpleContainerProps>() {
+    override fun RenderContext.render(): NElement<*> {
+        return "div" with TestProps1().apply {
+            (0..props.x).mapTo(children) {
+                Label::class with LabelProps("$it").apply {
+                    key = it
+                }
+            }
+        }
+    }
+
+}
+
 class UpdatesTest {
+
+    @Test
+    fun `simple container test`() {
+        val c = ReconciliationContext(MockPlatform)
+        val updates0 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
+        val updates1 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
+        val updates2 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 1))
+        val updates3= c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 3))
+        val updates4= c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
+        updates1
+    }
 
     @Test
     fun `recnciliation of sequences`() {
@@ -87,8 +124,8 @@ class UpdatesTest {
         }
         val updates3 = c.reconcile(e2)
         assertEquals(listOf(
-                Update.Remove(node = 0, attr =  TestProps1::children, child = 2),
-                Update.Add(node = 0, attr =  TestProps1::children, child = 2, index = 0)), updates3)
+                Update.Remove(node = 0, attr = TestProps1::children, child = 2),
+                Update.Add(node = 0, attr = TestProps1::children, child = 2, index = 0)), updates3)
 
     }
 

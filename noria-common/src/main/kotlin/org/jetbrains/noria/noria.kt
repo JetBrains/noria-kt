@@ -143,7 +143,7 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
                         render()
                     } else {
                         _props = e.props
-                        userComponent!!.element
+                        userComponent!!.subst?.element
                     }
                 }
             }
@@ -197,7 +197,7 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
         val valuesMap = mutableMapOf<KProperty<*>, Any?>()
         for ((attr, value) in e.props.valuesMap) {
             valuesMap[attr] = value
-            if (value != primitiveComponent?.valueProps?.get(value)) {
+            if (value != primitiveComponent?.valueProps?.get(attr)) {
                 supply(Update.SetAttr(node, attr, value))
             }
         }
