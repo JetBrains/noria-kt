@@ -72,20 +72,93 @@ class SimpleContainer : View<SimpleContainerProps>() {
             }
         }
     }
+}
 
+data class SplitProps(val left: NElement<*>,
+                      val right: NElement<*>) : Props()
+
+class SplitView : View<SplitProps>() {
+    override fun RenderContext.render(): NElement<*> {
+        return "div" with TestProps1().apply {
+            children.add(props.left)
+            children.add(props.right)
+        }
+    }
+}
+
+data class HOProps(val x: NElement<*>,
+                   val y: NElement<*>) : Props()
+
+class HO : View<HOProps>() {
+    override fun RenderContext.render(): NElement<*> {
+        val x1 = emit(props.x)
+        val y1 = emit(props.y)
+        return SplitView::class with (SplitProps(left = x1, right = y1))
+    }
 }
 
 class UpdatesTest {
+    @Test
+    fun `testing high-order components`() {
+        val c = ReconciliationContext(MockPlatform)
+        val updates0 = c.reconcile(HO::class with HOProps(
+                x = "foo" with TestProps1(),
+                y = "bar" with TestProps1()))
+        assertEquals(listOf(
+                Update.MakeNode(node = 0, type = "foo", parameters = emptyMap()),
+                Update.MakeNode(node = 1, type = "bar", parameters = emptyMap()),
+                Update.MakeNode(node = 2, type = "div", parameters = emptyMap()),
+                Update.Add(node = 2, attr = TestProps1::children, child = 0, index = 0),
+                Update.Add(node = 2, attr = TestProps1::children, child = 1, index = 1)
+        ), updates0)
+        val updates1 = c.reconcile(HO::class with HOProps(
+                x = "foo" with TestProps1(),
+                y = "baz" with TestProps1()))
+        assertEquals(listOf(
+                Update.MakeNode(node = 3, type = "baz", parameters = emptyMap()),
+                Update.Remove(node = 2, attr = TestProps1::children, child = 1),
+                Update.Add(node = 2, attr = TestProps1::children, child = 3, index = 1),
+                Update.DestroyNode(node = 1)
+        ), updates1)
+        val updates2 = c.reconcile(HO::class with HOProps(
+                x = "fizz" with TestProps1(),
+                y = "fuzz" with TestProps1()))
+        assertEquals(listOf(
+                Update.MakeNode(node = 4, type = "fizz", parameters = emptyMap()),
+                Update.MakeNode(node = 5, type = "fuzz", parameters = emptyMap()),
+                Update.Remove(node = 2, attr = TestProps1::children, child = 0),
+                Update.Remove(node = 2, attr = TestProps1::children, child = 3),
+                Update.Add(node = 2, attr = TestProps1::children, child = 4, index = 0),
+                Update.Add(node = 2, attr = TestProps1::children, child = 5, index = 1),
+                Update.DestroyNode(node = 0),
+                Update.DestroyNode(node = 3)
+        ), updates2)
+    }
+
 
     @Test
     fun `simple container test`() {
         val c = ReconciliationContext(MockPlatform)
         val updates0 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
         val updates1 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
+        assert(updates1.isEmpty())
         val updates2 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 1))
-        val updates3= c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 3))
-        val updates4= c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
-        updates1
+        assertEquals(listOf(
+                Update.Remove(node = 0, attr = TestProps1::children, child = 3),
+                Update.DestroyNode(node = 3)), updates2)
+        val updates3 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 3))
+        assertEquals(listOf(
+                Update.MakeNode(node = 4, type = "text-node", parameters = emptyMap()),
+                Update.SetAttr(node = 4, attr = TextNodeProps::text, value = "2"),
+                Update.MakeNode(node = 5, type = "text-node", parameters = emptyMap()),
+                Update.SetAttr(node = 5, attr = TextNodeProps::text, value = "3"),
+                Update.Add(node = 0, attr = TestProps1::children, child = 4, index = 2),
+                Update.Add(node = 0, attr = TestProps1::children, child = 5, index = 3)
+        ), updates3)
+        val updates4 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
+        assertEquals(listOf(
+                Update.Remove(node = 0, attr = TestProps1::children, child = 5),
+                Update.DestroyNode(node = 5)), updates4)
     }
 
     @Test
@@ -129,6 +202,51 @@ class UpdatesTest {
 
     }
 
+    @Test
+    fun `reuse with same type`() {
+        val c = ReconciliationContext(MockPlatform)
+        val e0 = "div" with TestProps1().apply {
+            children.add("text-node" with TextNodeProps().apply {
+                key = 1
+                text = "1"
+            })
+            children.add("text-node" with TextNodeProps().apply {
+                key = 2
+                text = "2"
+            })
+        }
+        c.reconcile(e0)
+        val e1 = "div" with TestProps1().apply {
+            children.add("text-node" with TextNodeProps().apply {
+                key = 3
+                text = "3"
+            })
+            children.add("text-node" with TextNodeProps().apply {
+                key = 1
+                text = "1"
+            })
+        }
+        val updates1 = c.reconcile(e1)
+        assertEquals(listOf(
+                Update.SetAttr(node = 2, attr = TextNodeProps::text, value = "3"),
+                Update.Remove(node = 0, attr = TestProps1::children, child = 2),
+                Update.Add(node = 0, attr = TestProps1::children, child = 2, index = 0)), updates1)
+        val e2 = "div" with TestProps1().apply {
+            children.add("text-node" with TextNodeProps().apply {
+                key = 1
+                text = "1"
+            })
+            children.add("text-node" with TextNodeProps().apply {
+                key = 4
+                text = "4"
+            })
+        }
+        val updates2 = c.reconcile(e2)
+        assertEquals(listOf(
+                Update.SetAttr(node = 2, attr = TextNodeProps::text, value = "4"),
+                Update.Remove(node = 0, attr = TestProps1::children, child = 1),
+                Update.Add(node = 0, attr = TestProps1::children, child = 1, index = 0)), updates2)
+    }
 
     @Test
     fun `Reconciliation keeps the view and adds update for new subview`() {

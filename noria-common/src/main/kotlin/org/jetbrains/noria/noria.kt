@@ -118,12 +118,12 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
     }
 
     private fun assignKeys(elements: List<NElement<*>>) {
-        val indices = mutableMapOf<KClass<*>, Int>()
+        val indices = mutableMapOf<Any, Int>()
         for (element in elements) {
             if (element.props.key == null) {
-                val index = indices.getOrPut(element::class, { 0 })
-                element.props.key = element::class to index
-                indices[element::class] = index + 1
+                val index = indices.getOrPut(element.type, { 0 })
+                element.props.key = element.type to index
+                indices[element.type] = index + 1
             }
         }
     }
@@ -168,7 +168,7 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
 
     private fun reconcilePrimitive(primitiveComponent: PrimitiveInstance?, e: NElement<*>): PrimitiveInstance {
         e as NElement.Primitive<*>
-        if (primitiveComponent != null && primitiveComponent.element::class != e::class) {
+        if (primitiveComponent != null && primitiveComponent.element.type != e.type) {
             supply(Update.DestroyNode(primitiveComponent.node!!))
             return reconcilePrimitive(null, e)
         }
