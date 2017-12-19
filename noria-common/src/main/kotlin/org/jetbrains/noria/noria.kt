@@ -29,12 +29,12 @@ typealias Render<T> = (T) -> NElement<*>
 
 var nextTempId: Int = 0
 
-sealed class NElement<out T : Props>(val props: T) {
+sealed class NElement<out T : Props>(val props: T, val type: Any) {
     val tempId: Int = nextTempId++
 
-    internal class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props)
-    internal class Class<out T : Props>(val kClass: KClass<*>, props: T) : NElement<T>(props)
-    internal class Primitive<out T : PrimitiveProps>(val type: String, props: T) : NElement<T>(props)
+    internal class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props, f)
+    internal class Class<out T : Props>(val kClass: KClass<*>, props: T) : NElement<T>(props, kClass)
+    internal class Primitive<out T : PrimitiveProps>(type: String, props: T) : NElement<T>(props, type)
 }
 
 sealed class Update {
@@ -54,6 +54,7 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
     private val byTempId: MutableMap<Int, Instance> = mutableMapOf()
     private val callbacksTable: MutableMap<Int, MutableMap<String, CallbackInfo<*>>> = mutableMapOf()
     private var root: Instance? = null
+    private val garbage = hashSetOf<Int>()
 
     override fun <T : NElement<*>> emit(e: T): T {
         createdElements.add(e)
@@ -68,8 +69,11 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
 
     fun reconcile(e: NElement<*>): List<Update> {
         root = reconcileImpl(root, e)
+        garbage.forEach { supply(Update.DestroyNode(it)) }
         val updatesCopy = updates.toCollection(mutableListOf())
         updates.clear()
+        garbage.clear()
+        byTempId.clear()
         return updatesCopy
     }
 
@@ -84,12 +88,33 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
             else -> throw IllegalArgumentException("don't know how to reconcile $e")
         }
         byTempId[e.tempId] = newComponent
-
         return newComponent
     }
 
     private fun reconcileByKeys(byKeys: Map<Any, Instance>, coll: Collection<NElement<*>>): List<Instance> {
-        return coll.mapNotNull { reconcileImpl(byKeys[it.props.key], it) }
+        val newKeysSet = hashSetOf<Any>()
+        coll.mapTo(newKeysSet) { it.props.key!! }
+        val garbageByType = mutableMapOf<Any, MutableList<Instance>>()
+        byKeys.values.filter { it.element.props.key !in newKeysSet }
+                .groupByTo(garbageByType) { it.element.type }
+        val newComponents = coll.mapNotNull {
+            var target: Instance? = byKeys[it.props.key]
+            if (target == null) {
+                val g = garbageByType[it.type]
+                if (g != null && !g.isEmpty()) {
+                    target = g.last()
+                    g.removeAt(g.size - 1)
+                }
+            }
+            reconcileImpl(target, it)
+        }
+        garbageByType.values.flatten().filter{it !is InstanceRef}.forEach {
+            val node = it.node
+            if (node != null) {
+                this.garbage.add(node)
+            }
+        }
+        return newComponents
     }
 
     private fun assignKeys(elements: List<NElement<*>>) {
@@ -149,7 +174,7 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
         }
         val node: Int = primitiveComponent?.node ?: makeNode()
         if (primitiveComponent?.node == null) {
-            supply(Update.MakeNode(node, e.type, e.props.constructorParameters))
+            supply(Update.MakeNode(node, e.type as String, e.props.constructorParameters))
         }
 
         val childrenMap = mutableMapOf<KProperty<*>, List<Instance>>()
@@ -237,7 +262,7 @@ class EventInfo(var source: Int,
 
 typealias Handler<T> = (T) -> Unit
 
-data class CallbackInfo<in T: Event>(val async: Boolean, val cb: Handler<T>)
+data class CallbackInfo<in T : Event>(val async: Boolean, val cb: Handler<T>)
 
 abstract class PrimitiveProps : Props() {
     val constructorParameters = mutableMapOf<KProperty<*>, Any?>()
@@ -282,7 +307,7 @@ abstract class PrimitiveProps : Props() {
             }
 
     val callbacks = mutableMapOf<String, CallbackInfo<*>>()
-    fun <T: Event> handler(): ReadWriteProperty<Any, CallbackInfo<T>> =
+    fun <T : Event> handler(): ReadWriteProperty<Any, CallbackInfo<T>> =
             object : ReadWriteProperty<Any, CallbackInfo<T>> {
                 override fun getValue(thisRef: Any, property: KProperty<*>): CallbackInfo<T> =
                         callbacks[property.name] as CallbackInfo<T>
@@ -314,7 +339,8 @@ fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List
     val oldNodesSet = oldList.toHashSet()
     val removes = mutableListOf<Update.Remove>()
     val adds = mutableListOf<Update.Add>()
-    for (c in oldList + newList) {
+    val allNodes = (oldList + newList).toHashSet()
+    for (c in allNodes) {
         if (!lcs.contains(c) && oldNodesSet.contains(c)) {
             removes.add(Update.Remove(node = node, child = c, attr = attr))
         }
