@@ -177,27 +177,27 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
             supply(Update.MakeNode(node, e.type as String, e.props.constructorParameters))
         }
 
-        val childrenMap = mutableMapOf<KProperty<*>, List<Instance>>()
+        val childrenMap = mutableMapOf<String, List<Instance>>()
         for ((attr, children) in e.props.childrenMap) {
             val childrenNotNull = (children as List<NElement<*>?>).filterNotNull()
             assignKeys(childrenNotNull)
-            childrenMap[attr] = reconcileList(node, attr, primitiveComponent?.childrenProps?.get(attr), childrenNotNull)
+            childrenMap[attr.name] = reconcileList(node, attr, primitiveComponent?.childrenProps?.get(attr.name), childrenNotNull)
         }
 
-        val componentsMap = mutableMapOf<KProperty<*>, Instance?>()
+        val componentsMap = mutableMapOf<String, Instance?>()
         for ((attr, element) in e.props.componentsMap) {
-            val oldComponent = primitiveComponent?.elementProps?.get(attr)
+            val oldComponent = primitiveComponent?.elementProps?.get(attr.name)
             val newComponent = reconcileImpl(oldComponent, element as NElement<*>)
-            componentsMap[attr] = newComponent
+            componentsMap[attr.name] = newComponent
             if (oldComponent?.node != newComponent?.node) {
                 supply(Update.SetAttr(node, attr, newComponent?.node))
             }
         }
 
-        val valuesMap = mutableMapOf<KProperty<*>, Any?>()
+        val valuesMap = mutableMapOf<String, Any?>()
         for ((attr, value) in e.props.valuesMap) {
-            valuesMap[attr] = value
-            if (value != primitiveComponent?.valueProps?.get(attr)) {
+            valuesMap[attr.name] = value
+            if (value != primitiveComponent?.valueProps?.get(attr.name)) {
                 supply(Update.SetAttr(node, attr, value))
             }
         }
@@ -329,9 +329,9 @@ class UserInstance(element: NElement<*>, node: Int?,
                    val subst: Instance?) : Instance(element, node)
 
 class PrimitiveInstance(element: NElement<*>, node: Int,
-                        val childrenProps: Map<KProperty<*>, List<Instance>>,
-                        val elementProps: Map<KProperty<*>, Instance?>,
-                        val valueProps: Map<KProperty<*>, *>) : Instance(element, node)
+                        val childrenProps: Map<String, List<Instance>>,
+                        val elementProps: Map<String, Instance?>,
+                        val valueProps: Map<String, *>) : Instance(element, node)
 
 
 fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List<Int>): Pair<List<Update.Remove>, List<Update.Add>> {

@@ -1,10 +1,10 @@
 package noria
 
+import noria.views.DomEvent
 import org.jetbrains.noria.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlin.test.fail
 
 data class Click(val buttonNum: Int, val clickCount: Int) : Event()
 
@@ -97,10 +97,50 @@ class HO : View<HOProps>() {
     }
 }
 
+data class AppProps(val counter: Int, val h: (Int) -> Unit) : Props()
+class AppComponent : View<AppProps>() {
+    override fun RenderContext.render(): NElement<*> {
+        return vbox {
+            +hbox {
+                justifyContent = JustifyContent.center
+
+                +button("Click Me Once") {
+                    props.h(props.counter + 1)
+                }
+
+                +button("Click Me Twice") {
+                    props.h(props.counter + 1)
+                }
+            }
+
+            repeat(props.counter) { n ->
+                +hbox {
+                    +label("$n")
+                }
+            }
+        }
+
+    }
+}
+
+
 class UpdatesTest {
     @Test
+    fun `test app component`() {
+        val c = ReconciliationContext(DOMPlatform)
+        var updates1: List<Update>? = null
+        fun h (cnt: Int): Unit {
+            updates1 = c.reconcile(AppComponent::class with AppProps(cnt, ::h))
+        }
+
+        val updates = c.reconcile(AppComponent::class with AppProps(0, ::h))
+        c.handleEvent(EventInfo(source = 2, name = "click", event = DomEvent()))
+        updates1
+    }
+
+    @Test
     fun `testing high-order components`() {
-        val c = ReconciliationContext(MockPlatform)
+        val c = ReconciliationContext(DOMPlatform)
         val updates0 = c.reconcile(HO::class with HOProps(
                 x = "foo" with TestProps1(),
                 y = "bar" with TestProps1()))
@@ -138,7 +178,7 @@ class UpdatesTest {
 
     @Test
     fun `simple container test`() {
-        val c = ReconciliationContext(MockPlatform)
+        val c = ReconciliationContext(DOMPlatform)
         val updates0 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
         val updates1 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
         assert(updates1.isEmpty())
@@ -163,7 +203,7 @@ class UpdatesTest {
 
     @Test
     fun `recnciliation of sequences`() {
-        val c = ReconciliationContext(MockPlatform)
+        val c = ReconciliationContext(DOMPlatform)
         val e0 = "div" with TestProps1().apply {
             children.add("hey" with TestProps1().apply { key = "hey" })
             children.add("hoy" with TestProps1().apply { key = "hoy" })
@@ -204,7 +244,7 @@ class UpdatesTest {
 
     @Test
     fun `reuse with same type`() {
-        val c = ReconciliationContext(MockPlatform)
+        val c = ReconciliationContext(DOMPlatform)
         val e0 = "div" with TestProps1().apply {
             children.add("text-node" with TextNodeProps().apply {
                 key = 1
@@ -250,7 +290,7 @@ class UpdatesTest {
 
     @Test
     fun `Reconciliation keeps the view and adds update for new subview`() {
-        val c = ReconciliationContext(MockPlatform)
+        val c = ReconciliationContext(DOMPlatform)
         val updates0 = c.reconcile(MyMacComponent::class with MyProps())
         val updates = c.reconcile(MyMacComponent::class with MyProps(x = 1))
         assertTrue(updates.single() is Update.Add, "There should be single update of adding subview")
