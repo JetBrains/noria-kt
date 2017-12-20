@@ -31,9 +31,14 @@ class AppComponent : View<AppProps>() {
                 }
             }
 
+            +hbox {
+                justifyContent = JustifyContent.center
+                +label("Counter = ${props.counter}")
+            }
+
             repeat(props.counter) { n ->
                 +hbox {
-                    +label("$n")
+                    +label("Item #${(n + 1).toString().padStart(2)}")
                 }
             }
         }
