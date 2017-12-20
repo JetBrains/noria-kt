@@ -29,6 +29,10 @@ class AppComponent : View<AppProps>() {
                     console.info("2 Clicked!!!")
                     props.h(props.counter - 1)
                 }
+
+                +button("This one you won't click", true) {
+                    
+                }
             }
 
             +hbox {

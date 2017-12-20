@@ -12,6 +12,11 @@ class Button : View<ButtonProps>() {
         return "input" with InputProps().apply {
             type = "button"
             value = props.title
+
+            if (props.disabled) {
+                disabled = "true"
+            }
+
             click = CallbackInfo(true) {
                 props.action()
             }

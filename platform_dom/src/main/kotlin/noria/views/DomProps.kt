@@ -20,4 +20,5 @@ open class DomProps : PrimitiveProps() {
 class InputProps : DomProps() {
     var type: String by value()
     var value: String by value()
+    var disabled: String by value()
 }
