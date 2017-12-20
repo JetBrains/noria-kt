@@ -6,6 +6,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/noria-common/noria-common.iml" filepath="$PROJECT_DIR$/.idea/modules/noria-common/noria-common.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/noria-js/noria-js.iml" filepath="$PROJECT_DIR$/.idea/modules/noria-js/noria-js.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/noria-jvm/noria-jvm.iml" filepath="$PROJECT_DIR$/.idea/modules/noria-jvm/noria-jvm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/noria-tests/noria-tests.iml" filepath="$PROJECT_DIR$/.idea/modules/noria-tests/noria-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/platform_dom/platform_dom.iml" filepath="$PROJECT_DIR$/.idea/modules/platform_dom/platform_dom.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/platform_dom_js/platform_dom_js.iml" filepath="$PROJECT_DIR$/.idea/modules/platform_dom_js/platform_dom_js.iml" />
     </modules>

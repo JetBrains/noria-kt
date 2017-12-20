@@ -20,14 +20,14 @@ class AppComponent : View<AppProps>() {
             +hbox {
                 justifyContent = JustifyContent.center
 
-                +button("Click Me Once") {
+                +button("More") {
                     console.info("1 Clicked!!!")
                     props.h(props.counter + 1)
                 }
 
-                +button("Click Me Twice") {
+                +button("Less") {
                     console.info("2 Clicked!!!")
-                    props.h(props.counter + 1)
+                    props.h(props.counter - 1)
                 }
             }
 
