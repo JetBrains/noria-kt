@@ -1,0 +1,26 @@
+buildscript {
+    apply from: '../versions.gradle'
+
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+apply plugin: 'kotlin-platform-js'
+apply plugin: 'kotlin-dce-js'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile project(':noria-common')
+    compile project(':noria-js')
+
+    compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
+    expectedBy project(":platform_dom")
+
+    testCompile "org.jetbrains.kotlin:kotlin-test-js:$kotlin_version"
+}

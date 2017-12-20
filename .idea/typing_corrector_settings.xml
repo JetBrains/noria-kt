@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="TypingCorrectorSettings">
-    <option name="LAYOUT_CHARS_CORRECTED" value="4" />
+    <option name="CHARS_CORRECTED" value="2" />
+    <option name="LAYOUT_CHARS_CORRECTED" value="33" />
   </component>
 </project>

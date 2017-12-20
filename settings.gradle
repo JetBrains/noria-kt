@@ -3,4 +3,4 @@ rootProject.name = 'noria'
 apply from: 'versions.gradle'
 
 include 'noria-common', 'noria-jvm', 'noria-js'
-include 'platform_dom'
+include 'platform_dom', 'platform_dom_js'

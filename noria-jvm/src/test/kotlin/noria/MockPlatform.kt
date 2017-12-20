@@ -18,4 +18,5 @@ class MockHBox : Container<BoxProps>() {
 object MockPlatform : Platform {
     override fun hbox() = MockHBox::class
     override fun vbox() = MockVBox::class
+    override fun label() = TODO()
 }
