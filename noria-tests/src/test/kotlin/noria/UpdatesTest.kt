@@ -1,6 +1,7 @@
 package noria
 
 import noria.views.DomEvent
+import noria.views.DomProps
 import org.jetbrains.noria.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -138,7 +139,99 @@ class CapturingDriver : PlatformDriver {
     }
 }
 
+data class WrapperProps(val w: NElement<*>?): Props()
+class Wrapper: View<WrapperProps>() {
+    override fun RenderContext.render(): NElement<*> {
+        return "div" with DomProps().apply {
+            val w = props.w
+            if (w != null) {
+                children.add(w)
+            }
+        }
+    }
+}
+
+data class EmitterProps(val i: Int) : Props()
+class Emitter : View<EmitterProps>() {
+    override fun RenderContext.render(): NElement<*> {
+        val e = emit(label("some text"))
+        return "div" with DomProps().apply {
+            if (props.i == 0) {
+                children.add(Wrapper::class with WrapperProps(e))
+            } else {
+                children.add(Wrapper::class with WrapperProps(null))
+            }
+            if (props.i == 1) {
+                children.add(Wrapper::class with WrapperProps(e))
+            } else {
+                children.add(Wrapper::class with WrapperProps(null))
+            }
+        }
+    }
+}
+
+data class RelocationProps(val i: Int) : Props()
+class Relocation : View<RelocationProps>() {
+    override fun RenderContext.render(): NElement<*> {
+        val e = label("some text")
+
+        return "div" with DomProps().apply {
+            if (props.i == 0) {
+                children.add(Wrapper::class with WrapperProps(e))
+            } else {
+                children.add(Wrapper::class with WrapperProps(null))
+            }
+            children.add(Wrapper::class with WrapperProps(e))
+        }
+    }
+}
+
 class UpdatesTest {
+
+    @Test
+    fun `element relocates`() {
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
+        c.reconcile(Relocation::class with RelocationProps(0))
+        d.updates()
+        c.reconcile(Relocation::class with RelocationProps(1))
+        val updates = d.updates()
+        assertEquals(listOf(
+                Update.Remove(node = 1, attr = "children", value = 2)
+        ), updates)
+    }
+
+    @Test
+    fun `emit`() {
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
+        c.reconcile(Emitter::class with EmitterProps(0))
+        d.updates()
+        c.reconcile(Emitter::class with EmitterProps(1))
+        val updates = d.updates()
+        assertEquals(listOf(
+                Update.Remove(node = 2, attr = "children", value = 0),
+                Update.Add(node = 3, attr = "children", value = 0, index = 0)
+        ), updates)
+    }
+
+    @Test
+    fun `recursive destroy`() {
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
+        c.reconcile("div" with DomProps().apply {
+            children.add("span" with DomProps().apply {
+                children.add("pre" with DomProps())
+            })})
+        d.updates()
+        c.reconcile("div" with DomProps())
+        val updates = d.updates()
+        assertEquals(listOf(
+                Update.Remove(node = 0, attr = "children", value = 1),
+                Update.DestroyNode(node = 1),
+                Update.DestroyNode(node = 2)), updates)
+    }
+
     @Test
     fun `test app component`() {
         val d = CapturingDriver()
