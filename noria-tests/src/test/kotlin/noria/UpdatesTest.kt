@@ -162,8 +162,8 @@ class UpdatesTest {
                 Update.MakeNode(node = 0, type = "foo", parameters = emptyMap()),
                 Update.MakeNode(node = 1, type = "bar", parameters = emptyMap()),
                 Update.MakeNode(node = 2, type = "div", parameters = emptyMap()),
-                Update.Add(node = 2, attr = "children", child = 0, index = 0),
-                Update.Add(node = 2, attr = "children", child = 1, index = 1)
+                Update.Add(node = 2, attr = "children", value = 0, index = 0),
+                Update.Add(node = 2, attr = "children", value = 1, index = 1)
         ), d.updates())
 
         c.reconcile(HO::class with HOProps(
@@ -171,8 +171,8 @@ class UpdatesTest {
                 y = "baz" with TestProps1()))
         assertEquals(listOf(
                 Update.MakeNode(node = 3, type = "baz", parameters = emptyMap()),
-                Update.Remove(node = 2, attr = "children", child = 1),
-                Update.Add(node = 2, attr = "children", child = 3, index = 1),
+                Update.Remove(node = 2, attr = "children", value = 1),
+                Update.Add(node = 2, attr = "children", value = 3, index = 1),
                 Update.DestroyNode(node = 1)
         ), d.updates())
 
@@ -182,10 +182,10 @@ class UpdatesTest {
         assertEquals(listOf(
                 Update.MakeNode(node = 4, type = "fizz", parameters = emptyMap()),
                 Update.MakeNode(node = 5, type = "fuzz", parameters = emptyMap()),
-                Update.Remove(node = 2, attr = "children", child = 0),
-                Update.Remove(node = 2, attr = "children", child = 3),
-                Update.Add(node = 2, attr = "children", child = 4, index = 0),
-                Update.Add(node = 2, attr = "children", child = 5, index = 1),
+                Update.Remove(node = 2, attr = "children", value = 0),
+                Update.Remove(node = 2, attr = "children", value = 3),
+                Update.Add(node = 2, attr = "children", value = 4, index = 0),
+                Update.Add(node = 2, attr = "children", value = 5, index = 1),
                 Update.DestroyNode(node = 0),
                 Update.DestroyNode(node = 3)
         ), d.updates())
@@ -202,7 +202,7 @@ class UpdatesTest {
         assert(d.updates().isEmpty())
         c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 1))
         assertEquals(listOf(
-                Update.Remove(node = 0, attr = "children", child = 3),
+                Update.Remove(node = 0, attr = "children", value = 3),
                 Update.DestroyNode(node = 3)), d.updates())
         c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 3))
         assertEquals(listOf(
@@ -210,12 +210,12 @@ class UpdatesTest {
                 Update.SetAttr(node = 4, attr = "text", value = "2"),
                 Update.MakeNode(node = 5, type = "text-node", parameters = emptyMap()),
                 Update.SetAttr(node = 5, attr = "text", value = "3"),
-                Update.Add(node = 0, attr = "children", child = 4, index = 2),
-                Update.Add(node = 0, attr = "children", child = 5, index = 3)
+                Update.Add(node = 0, attr = "children", value = 4, index = 2),
+                Update.Add(node = 0, attr = "children", value = 5, index = 3)
         ), d.updates())
         c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
         assertEquals(listOf(
-                Update.Remove(node = 0, attr = "children", child = 5),
+                Update.Remove(node = 0, attr = "children", value = 5),
                 Update.DestroyNode(node = 5)), d.updates())
     }
 
@@ -233,8 +233,8 @@ class UpdatesTest {
                 Update.MakeNode(node = 0, type = "div", parameters = emptyMap()),
                 Update.MakeNode(node = 1, type = "hey", parameters = emptyMap()),
                 Update.MakeNode(node = 2, type = "hoy", parameters = emptyMap()),
-                Update.Add(node = 0, attr = "children", child = 1, index = 0),
-                Update.Add(node = 0, attr = "children", child = 2, index = 1)), d.updates())
+                Update.Add(node = 0, attr = "children", value = 1, index = 0),
+                Update.Add(node = 0, attr = "children", value = 2, index = 1)), d.updates())
         c.reconcile(e0)
         assert(d.updates().isEmpty())
         val e1 = "div" with TestProps1().apply {
@@ -246,9 +246,9 @@ class UpdatesTest {
         assertEquals(listOf(
                 Update.MakeNode(node = 3, type = "hiy", parameters = emptyMap()),
                 Update.MakeNode(node = 4, type = "fu", parameters = emptyMap()),
-                Update.Remove(node = 0, attr = "children", child = 1),
-                Update.Add(node = 0, attr = "children", child = 3, index = 0),
-                Update.Add(node = 0, attr = "children", child = 4, index = 2),
+                Update.Remove(node = 0, attr = "children", value = 1),
+                Update.Add(node = 0, attr = "children", value = 3, index = 0),
+                Update.Add(node = 0, attr = "children", value = 4, index = 2),
                 Update.DestroyNode(node = 1)), d.updates())
         val e2 = "div" with TestProps1().apply {
             children.add("hoy" with TestProps1().apply { key = "hoy" })
@@ -257,8 +257,8 @@ class UpdatesTest {
         }
         c.reconcile(e2)
         assertEquals(listOf(
-                Update.Remove(node = 0, attr = "children", child = 2),
-                Update.Add(node = 0, attr = "children", child = 2, index = 0)), d.updates())
+                Update.Remove(node = 0, attr = "children", value = 2),
+                Update.Add(node = 0, attr = "children", value = 2, index = 0)), d.updates())
 
     }
 
@@ -291,8 +291,8 @@ class UpdatesTest {
         c.reconcile(e1)
         assertEquals(listOf(
                 Update.SetAttr(node = 2, attr = "text", value = "3"),
-                Update.Remove(node = 0, attr = "children", child = 2),
-                Update.Add(node = 0, attr = "children", child = 2, index = 0)), d.updates())
+                Update.Remove(node = 0, attr = "children", value = 2),
+                Update.Add(node = 0, attr = "children", value = 2, index = 0)), d.updates())
         val e2 = "div" with TestProps1().apply {
             children.add("text-node" with TextNodeProps().apply {
                 key = 1
@@ -306,8 +306,8 @@ class UpdatesTest {
         c.reconcile(e2)
         assertEquals(listOf(
                 Update.SetAttr(node = 2, attr = "text", value = "4"),
-                Update.Remove(node = 0, attr = "children", child = 1),
-                Update.Add(node = 0, attr = "children", child = 1, index = 0)), d.updates())
+                Update.Remove(node = 0, attr = "children", value = 1),
+                Update.Add(node = 0, attr = "children", value = 1, index = 0)), d.updates())
     }
 
     @Test

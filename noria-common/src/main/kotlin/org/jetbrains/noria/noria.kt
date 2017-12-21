@@ -53,8 +53,8 @@ sealed class Update {
     data class SetAttr(val node: Int, val attr: String, val value: Any?) : Update()
     data class SetCallback(val node: Int, val attr: String, val async: Boolean) : Update()
     data class RemoveCallback(val node: Int, val attr: String) : Update()
-    data class Add(val node: Int, val attr: String, val child: Any?, val index: Int) : Update()
-    data class Remove(val node: Int, val attr: String, val child: Any?) : Update()
+    data class Add(val node: Int, val attr: String, val value: Any?, val index: Int) : Update()
+    data class Remove(val node: Int, val attr: String, val value: Any?) : Update()
     data class DestroyNode(val node: Int) : Update()
 }
 
@@ -359,12 +359,12 @@ fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>)
     val allNodes = (oldList + newList).toHashSet()
     for (c in allNodes) {
         if (!lcs.contains(c) && oldNodesSet.contains(c)) {
-            removes.add(Update.Remove(node = node, child = c, attr = attr))
+            removes.add(Update.Remove(node = node, value = c, attr = attr))
         }
     }
     newList.forEachIndexed { i, c ->
         if (!lcs.contains(c)) {
-            adds.add(Update.Add(node = node, child = c, attr = attr, index = i))
+            adds.add(Update.Add(node = node, value = c, attr = attr, index = i))
         }
     }
     return removes to adds

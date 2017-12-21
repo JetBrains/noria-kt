@@ -47,7 +47,7 @@ class JSDriver(val mountPoint: Element, val events: (EventInfo) -> Unit) : Platf
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                     when (node) {
                         is Text -> node.textContent = u.value as String
-                        is Element -> node.setAttribute(u.attr.name, u.value as String)
+                        is Element -> node.setAttribute(u.attr, u.value as String)
                         else -> error("Unknown type of the node")
                     }
 
@@ -77,13 +77,13 @@ class JSDriver(val mountPoint: Element, val events: (EventInfo) -> Unit) : Platf
 
                 is Update.Add -> {
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
-                    val child: Node = nodes[u.child as Int] ?: error("Update $u. Cannot find child")
+                    val child: Node = nodes[u.value as Int] ?: error("Update $u. Cannot find child")
                     (node as Element).insertChildAtIndex(child, u.index)
                 }
 
                 is Update.Remove -> {
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
-                    val child: Node = nodes[u.child as Int] ?: error("Update $u. Cannot find child")
+                    val child: Node = nodes[u.value as Int] ?: error("Update $u. Cannot find child")
                     (node as Element).removeChild(child)
                 }
 
