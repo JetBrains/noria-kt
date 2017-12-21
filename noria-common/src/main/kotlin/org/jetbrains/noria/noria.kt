@@ -22,14 +22,14 @@ interface PlatformDriver {
 abstract class View<T : Props> {
     val props: T get() = _props ?: error("Props are not initialized yet")
     internal var _props: T? = null
-    lateinit var context: RenderContext
+    lateinit var context: ReconciliationContext
 
     open fun shouldUpdate(newProps: T): Boolean {
         return true // TODO props != newProps
     }
 
     fun forceUpdate() {
-        (context as ReconciliationContext).updateFromRoot() // TODO!!! Update from this view downwards
+        context.updateFromRoot() // TODO!!! Update from this view downwards
     }
 
 
@@ -150,7 +150,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             is NElement.Class<*> -> {
                 if (view == null) {
                     view = (e.kClass as KClass<View<Props>>).instantiate()
-                    view.context = renderContext
+                    view.context = this
                 }
 
                 view.run {
