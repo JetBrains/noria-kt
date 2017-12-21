@@ -49,12 +49,12 @@ sealed class NElement<out T : Props>(val props: T, val type: Any) {
 }
 
 sealed class Update {
-    data class MakeNode(val node: Int, val type: String, val parameters: Map<KProperty<*>, Any?>) : Update()
-    data class SetAttr(val node: Int, val attr: KProperty<*>, val value: Any?) : Update()
+    data class MakeNode(val node: Int, val type: String, val parameters: Map<String, Any?>) : Update()
+    data class SetAttr(val node: Int, val attr: String, val value: Any?) : Update()
     data class SetCallback(val node: Int, val attr: String, val async: Boolean) : Update()
     data class RemoveCallback(val node: Int, val attr: String) : Update()
-    data class Add(val node: Int, val attr: KProperty<*>, val child: Any?, val index: Int) : Update()
-    data class Remove(val node: Int, val attr: KProperty<*>, val child: Any?) : Update()
+    data class Add(val node: Int, val attr: String, val child: Any?, val index: Int) : Update()
+    data class Remove(val node: Int, val attr: String, val child: Any?) : Update()
     data class DestroyNode(val node: Int) : Update()
 }
 
@@ -198,14 +198,14 @@ class ReconciliationContext(override val platform: Platform, val driver: Platfor
         for ((attr, children) in e.props.childrenMap) {
             val childrenNotNull = (children as List<NElement<*>?>).filterNotNull()
             assignKeys(childrenNotNull)
-            childrenMap[attr.name] = reconcileList(node, attr, primitiveComponent?.childrenProps?.get(attr.name), childrenNotNull)
+            childrenMap[attr] = reconcileList(node, attr, primitiveComponent?.childrenProps?.get(attr), childrenNotNull)
         }
 
         val componentsMap = mutableMapOf<String, Instance?>()
         for ((attr, element) in e.props.componentsMap) {
-            val oldComponent = primitiveComponent?.elementProps?.get(attr.name)
+            val oldComponent = primitiveComponent?.elementProps?.get(attr)
             val newComponent = reconcileImpl(oldComponent, element as NElement<*>)
-            componentsMap[attr.name] = newComponent
+            componentsMap[attr] = newComponent
             if (oldComponent?.node != newComponent?.node) {
                 supply(Update.SetAttr(node, attr, newComponent?.node))
             }
@@ -213,8 +213,8 @@ class ReconciliationContext(override val platform: Platform, val driver: Platfor
 
         val valuesMap = mutableMapOf<String, Any?>()
         for ((attr, value) in e.props.valuesMap) {
-            valuesMap[attr.name] = value
-            if (value != primitiveComponent?.valueProps?.get(attr.name)) {
+            valuesMap[attr] = value
+            if (value != primitiveComponent?.valueProps?.get(attr)) {
                 supply(Update.SetAttr(node, attr, value))
             }
         }
@@ -242,7 +242,7 @@ class ReconciliationContext(override val platform: Platform, val driver: Platfor
                 node = node)
     }
 
-    private fun reconcileList(node: Int, attr: KProperty<*>, components: List<Instance>?, elements: List<NElement<*>>): List<Instance> {
+    private fun reconcileList(node: Int, attr: String, components: List<Instance>?, elements: List<NElement<*>>): List<Instance> {
         val componentsByKeys: Map<Any, Instance> = components?.map { it.element.props.key!! to it }?.toMap() ?: emptyMap()
         val reconciledList = reconcileByKeys(componentsByKeys, elements)
         val (removes, adds) = updateOrder(node, attr, components?.mapNotNull { it.node } ?: listOf(), reconciledList.mapNotNull { it.node })
@@ -282,44 +282,44 @@ typealias Handler<T> = (T) -> Unit
 data class CallbackInfo<in T : Event>(val async: Boolean, val cb: Handler<T>)
 
 abstract class PrimitiveProps : Props() {
-    val constructorParameters = mutableMapOf<KProperty<*>, Any?>()
+    val constructorParameters = mutableMapOf<String, Any?>()
 
-    val componentsMap = mutableMapOf<KProperty<*>, Any?>()
+    val componentsMap = mutableMapOf<String, Any?>()
     fun <T : NElement<*>> element(constructor: Boolean = false): ReadWriteProperty<Any, T> =
             object : ReadWriteProperty<Any, T> {
                 override fun getValue(thisRef: Any, property: KProperty<*>): T =
-                        componentsMap[property] as T
+                        componentsMap[property.name] as T
 
                 override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
                     if (constructor) {
-                        constructorParameters[property] = value
+                        constructorParameters[property.name] = value
                     }
-                    componentsMap[property] = value
+                    componentsMap[property.name] = value
                 }
             }
 
-    val valuesMap = mutableMapOf<KProperty<*>, Any?>()
+    val valuesMap = mutableMapOf<String, Any?>()
     fun <T> value(constructor: Boolean = false): ReadWriteProperty<Any, T> =
             object : ReadWriteProperty<Any, T> {
                 override fun getValue(thisRef: Any, property: KProperty<*>): T =
-                        valuesMap[property] as T
+                        valuesMap[property.name] as T
 
                 override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
                     if (constructor) {
-                        constructorParameters[property] = value
+                        constructorParameters[property.name] = value
                     }
-                    valuesMap[property] = value
+                    valuesMap[property.name] = value
                 }
             }
 
-    val childrenMap = mutableMapOf<KProperty<*>, Any?>()
+    val childrenMap = mutableMapOf<String, Any?>()
     fun <T : List<NElement<*>>> elementList(): ReadWriteProperty<Any, T> =
             object : ReadWriteProperty<Any, T> {
                 override fun getValue(thisRef: Any, property: KProperty<*>): T =
-                        childrenMap.getOrPut(property, { mutableListOf<Any?>() }) as T
+                        childrenMap.getOrPut(property.name, { mutableListOf<Any?>() }) as T
 
                 override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-                    childrenMap[property] = value
+                    childrenMap[property.name] = value
                 }
             }
 
@@ -351,7 +351,7 @@ class PrimitiveInstance(element: NElement<*>, node: Int,
                         val valueProps: Map<String, *>) : Instance(element, node)
 
 
-fun updateOrder(node: Int, attr: KProperty<*>, oldList: List<Int>, newList: List<Int>): Pair<List<Update.Remove>, List<Update.Add>> {
+fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>): Pair<List<Update.Remove>, List<Update.Add>> {
     val lcs = lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
     val oldNodesSet = oldList.toHashSet()
     val removes = mutableListOf<Update.Remove>()
