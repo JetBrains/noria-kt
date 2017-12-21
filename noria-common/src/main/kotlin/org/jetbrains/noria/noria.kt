@@ -112,7 +112,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
         val reusableGarbageByType = mutableMapOf<Any, MutableList<Instance>>()
         byKeys.values
                 .filter { it.element.props.key !in newKeysSet }
-                .filter {it.backrefs.size == 1}
+                .filter { it.backrefs.size == 1 }
                 .groupByTo(reusableGarbageByType) { it.element.type }
         return coll.mapNotNull {
             var target: Instance? = byKeys[it.props.key]
@@ -144,7 +144,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             userComponent.element.type != e.type -> null
             else -> userComponent.view as View<Props>?
         }
-        val renderContext= RenderContextImpl(platform = platform)
+        val renderContext = RenderContextImpl(platform = platform)
         val substElement = when (e) {
             is NElement.Fun<*> -> (e as NElement.Fun<Props>).f(e.props)
             is NElement.Class<*> -> {
@@ -171,25 +171,27 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
         val oldByKeys = userComponent?.byKeys ?: emptyMap()
         val newComponents = reconcileByKeys(oldByKeys, renderContext.createdElements)
         val newSubst = reconcileImpl(userComponent?.subst, substElement)
+        val newByKeys = newComponents.associateBy { it.element.props.key!! }
         val result = userComponent?.apply {
             this.element = e
             this.node = newSubst?.node
-            this.byKeys = newComponents.associateBy { it.element.props.key!! }
+            this.byKeys = newByKeys
             this.subst = newSubst
             this.view = view
         } ?: UserInstance(
                 element = e,
                 node = newSubst?.node,
-                byKeys = newComponents.associateBy { it.element.props.key!! },
+                byKeys = newByKeys,
                 subst = newSubst,
                 view = view,
                 backrefs = hashSetOf())
         val oldComponents = oldByKeys.values
+        val reference = UserReference(result)
         for (c in oldComponents) {
-            c.backrefs.remove(UserReference(result))
+            c.backrefs.remove(reference)
         }
         for (c in newComponents) {
-            c.backrefs.add(UserReference(result))
+            c.backrefs.add(reference)
         }
         for (c in oldComponents) {
             if (c.backrefs.isEmpty()) {
@@ -208,14 +210,14 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             is UserInstance -> c.byKeys.values.forEach {
                 it.backrefs.remove(UserReference(c))
                 if (it.backrefs.isEmpty()) {
-                    gc (it)
+                    gc(it)
                 }
             }
             is PrimitiveInstance -> {
                 c.componentProps.forEach { (attr, comp) ->
                     comp?.backrefs?.remove(AttrReference(c, attr))
                     if (comp?.backrefs?.isEmpty() == true) {
-                        gc (comp)
+                        gc(comp)
                     }
                 }
                 c.childrenProps.forEach { (attr, children) ->
@@ -223,7 +225,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                         val child = children[i]
                         child.backrefs.remove(ListReference(c, attr, i))
                         if (child.backrefs.isEmpty()) {
-                            gc (child)
+                            gc(child)
                         }
                     }
                 }
@@ -433,6 +435,7 @@ abstract class PrimitiveProps : Props() {
 interface Reference {
     val referer: Instance?
 }
+
 data class ListReference(override val referer: PrimitiveInstance, val attr: String, val index: Int) : Reference
 data class AttrReference(override val referer: PrimitiveInstance, val attr: String) : Reference
 data class UserReference(override val referer: UserInstance) : Reference
