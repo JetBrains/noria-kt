@@ -123,25 +123,39 @@ class AppComponent : View<AppProps>() {
     }
 }
 
+class CapturingDriver : PlatformDriver {
+    val capturedUpdates = mutableListOf<Update>()
+    override fun applyUpdates(updates: List<Update>) {
+        capturedUpdates.addAll(updates)
+    }
+
+    fun updates(): List<Update> {
+        val copy = mutableListOf<Update>()
+        copy.addAll(capturedUpdates)
+
+        capturedUpdates.clear()
+        return copy
+    }
+}
 
 class UpdatesTest {
     @Test
     fun `test app component`() {
-        val c = ReconciliationContext(DOMPlatform)
-        var updates1: List<Update>? = null
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
         fun h (cnt: Int): Unit {
-            updates1 = c.reconcile(AppComponent::class with AppProps(cnt, ::h))
+            c.reconcile(AppComponent::class with AppProps(cnt, ::h))
         }
 
-        val updates = c.reconcile(AppComponent::class with AppProps(0, ::h))
+        c.reconcile(AppComponent::class with AppProps(0, ::h))
         c.handleEvent(EventInfo(source = 2, name = "click", event = DomEvent()))
-        updates1
     }
 
     @Test
     fun `testing high-order components`() {
-        val c = ReconciliationContext(DOMPlatform)
-        val updates0 = c.reconcile(HO::class with HOProps(
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
+        c.reconcile(HO::class with HOProps(
                 x = "foo" with TestProps1(),
                 y = "bar" with TestProps1()))
         assertEquals(listOf(
@@ -150,8 +164,9 @@ class UpdatesTest {
                 Update.MakeNode(node = 2, type = "div", parameters = emptyMap()),
                 Update.Add(node = 2, attr = TestProps1::children, child = 0, index = 0),
                 Update.Add(node = 2, attr = TestProps1::children, child = 1, index = 1)
-        ), updates0)
-        val updates1 = c.reconcile(HO::class with HOProps(
+        ), d.updates())
+
+        c.reconcile(HO::class with HOProps(
                 x = "foo" with TestProps1(),
                 y = "baz" with TestProps1()))
         assertEquals(listOf(
@@ -159,8 +174,9 @@ class UpdatesTest {
                 Update.Remove(node = 2, attr = TestProps1::children, child = 1),
                 Update.Add(node = 2, attr = TestProps1::children, child = 3, index = 1),
                 Update.DestroyNode(node = 1)
-        ), updates1)
-        val updates2 = c.reconcile(HO::class with HOProps(
+        ), d.updates())
+
+        c.reconcile(HO::class with HOProps(
                 x = "fizz" with TestProps1(),
                 y = "fuzz" with TestProps1()))
         assertEquals(listOf(
@@ -172,21 +188,23 @@ class UpdatesTest {
                 Update.Add(node = 2, attr = TestProps1::children, child = 5, index = 1),
                 Update.DestroyNode(node = 0),
                 Update.DestroyNode(node = 3)
-        ), updates2)
+        ), d.updates())
     }
 
 
     @Test
     fun `simple container test`() {
-        val c = ReconciliationContext(DOMPlatform)
-        val updates0 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
-        val updates1 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
-        assert(updates1.isEmpty())
-        val updates2 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 1))
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
+        c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
+        d.updates()
+        c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
+        assert(d.updates().isEmpty())
+        c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 1))
         assertEquals(listOf(
                 Update.Remove(node = 0, attr = TestProps1::children, child = 3),
-                Update.DestroyNode(node = 3)), updates2)
-        val updates3 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 3))
+                Update.DestroyNode(node = 3)), d.updates())
+        c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 3))
         assertEquals(listOf(
                 Update.MakeNode(node = 4, type = "text-node", parameters = emptyMap()),
                 Update.SetAttr(node = 4, attr = TextNodeProps::text, value = "2"),
@@ -194,57 +212,60 @@ class UpdatesTest {
                 Update.SetAttr(node = 5, attr = TextNodeProps::text, value = "3"),
                 Update.Add(node = 0, attr = TestProps1::children, child = 4, index = 2),
                 Update.Add(node = 0, attr = TestProps1::children, child = 5, index = 3)
-        ), updates3)
-        val updates4 = c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
+        ), d.updates())
+        c.reconcile(SimpleContainer::class with SimpleContainerProps(x = 2))
         assertEquals(listOf(
                 Update.Remove(node = 0, attr = TestProps1::children, child = 5),
-                Update.DestroyNode(node = 5)), updates4)
+                Update.DestroyNode(node = 5)), d.updates())
     }
 
     @Test
     fun `recnciliation of sequences`() {
-        val c = ReconciliationContext(DOMPlatform)
+        val d = CapturingDriver()
+
+        val c = ReconciliationContext(DOMPlatform, d)
         val e0 = "div" with TestProps1().apply {
             children.add("hey" with TestProps1().apply { key = "hey" })
             children.add("hoy" with TestProps1().apply { key = "hoy" })
         }
-        val updates0 = c.reconcile(e0)
+        c.reconcile(e0)
         assertEquals(listOf(
                 Update.MakeNode(node = 0, type = "div", parameters = emptyMap()),
                 Update.MakeNode(node = 1, type = "hey", parameters = emptyMap()),
                 Update.MakeNode(node = 2, type = "hoy", parameters = emptyMap()),
                 Update.Add(node = 0, attr = TestProps1::children, child = 1, index = 0),
-                Update.Add(node = 0, attr = TestProps1::children, child = 2, index = 1)), updates0)
-        val updates1 = c.reconcile(e0)
-        assert(updates1.isEmpty())
+                Update.Add(node = 0, attr = TestProps1::children, child = 2, index = 1)), d.updates())
+        c.reconcile(e0)
+        assert(d.updates().isEmpty())
         val e1 = "div" with TestProps1().apply {
             children.add("hiy" with TestProps1().apply { key = "hiy" })
             children.add("hoy" with TestProps1().apply { key = "hoy" })
             children.add("fu" with TestProps1().apply { key = "fu" })
         }
-        val updates2 = c.reconcile(e1)
+        c.reconcile(e1)
         assertEquals(listOf(
                 Update.MakeNode(node = 3, type = "hiy", parameters = emptyMap()),
                 Update.MakeNode(node = 4, type = "fu", parameters = emptyMap()),
                 Update.Remove(node = 0, attr = TestProps1::children, child = 1),
                 Update.Add(node = 0, attr = TestProps1::children, child = 3, index = 0),
                 Update.Add(node = 0, attr = TestProps1::children, child = 4, index = 2),
-                Update.DestroyNode(node = 1)), updates2)
+                Update.DestroyNode(node = 1)), d.updates())
         val e2 = "div" with TestProps1().apply {
             children.add("hoy" with TestProps1().apply { key = "hoy" })
             children.add("hiy" with TestProps1().apply { key = "hiy" })
             children.add("fu" with TestProps1().apply { key = "fu" })
         }
-        val updates3 = c.reconcile(e2)
+        c.reconcile(e2)
         assertEquals(listOf(
                 Update.Remove(node = 0, attr = TestProps1::children, child = 2),
-                Update.Add(node = 0, attr = TestProps1::children, child = 2, index = 0)), updates3)
+                Update.Add(node = 0, attr = TestProps1::children, child = 2, index = 0)), d.updates())
 
     }
 
     @Test
     fun `reuse with same type`() {
-        val c = ReconciliationContext(DOMPlatform)
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
         val e0 = "div" with TestProps1().apply {
             children.add("text-node" with TextNodeProps().apply {
                 key = 1
@@ -256,6 +277,7 @@ class UpdatesTest {
             })
         }
         c.reconcile(e0)
+        d.updates()
         val e1 = "div" with TestProps1().apply {
             children.add("text-node" with TextNodeProps().apply {
                 key = 3
@@ -266,11 +288,11 @@ class UpdatesTest {
                 text = "1"
             })
         }
-        val updates1 = c.reconcile(e1)
+        c.reconcile(e1)
         assertEquals(listOf(
                 Update.SetAttr(node = 2, attr = TextNodeProps::text, value = "3"),
                 Update.Remove(node = 0, attr = TestProps1::children, child = 2),
-                Update.Add(node = 0, attr = TestProps1::children, child = 2, index = 0)), updates1)
+                Update.Add(node = 0, attr = TestProps1::children, child = 2, index = 0)), d.updates())
         val e2 = "div" with TestProps1().apply {
             children.add("text-node" with TextNodeProps().apply {
                 key = 1
@@ -281,18 +303,20 @@ class UpdatesTest {
                 text = "4"
             })
         }
-        val updates2 = c.reconcile(e2)
+        c.reconcile(e2)
         assertEquals(listOf(
                 Update.SetAttr(node = 2, attr = TextNodeProps::text, value = "4"),
                 Update.Remove(node = 0, attr = TestProps1::children, child = 1),
-                Update.Add(node = 0, attr = TestProps1::children, child = 1, index = 0)), updates2)
+                Update.Add(node = 0, attr = TestProps1::children, child = 1, index = 0)), d.updates())
     }
 
     @Test
     fun `Reconciliation keeps the view and adds update for new subview`() {
-        val c = ReconciliationContext(DOMPlatform)
-        val updates0 = c.reconcile(MyMacComponent::class with MyProps())
-        val updates = c.reconcile(MyMacComponent::class with MyProps(x = 1))
-        assertTrue(updates.single() is Update.Add, "There should be single update of adding subview")
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
+        c.reconcile(MyMacComponent::class with MyProps())
+        d.updates()
+        c.reconcile(MyMacComponent::class with MyProps(x = 1))
+        assertTrue(d.updates().single() is Update.Add, "There should be single update of adding subview")
     }
 }

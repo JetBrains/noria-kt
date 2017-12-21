@@ -13,21 +13,23 @@ import org.jetbrains.noria.vbox
 import org.jetbrains.noria.with
 import kotlin.browser.document
 
-data class AppProps(val counter: Int, val h: (Int) -> Unit) : Props()
+object AppProps : Props()
 class AppComponent : View<AppProps>() {
+    var counter: Int = 10
+
     override fun RenderContext.render(): NElement<*> {
         return vbox {
             +hbox {
                 justifyContent = JustifyContent.center
 
                 +button("More") {
-                    console.info("1 Clicked!!!")
-                    props.h(props.counter + 1)
+                    counter++
+                    forceUpdate()
                 }
 
                 +button("Less") {
-                    console.info("2 Clicked!!!")
-                    props.h(props.counter - 1)
+                    counter--
+                    forceUpdate()
                 }
 
                 +button("This one you won't click", true) {
@@ -37,10 +39,10 @@ class AppComponent : View<AppProps>() {
 
             +hbox {
                 justifyContent = JustifyContent.center
-                +label("Counter = ${props.counter}")
+                +label("Counter = ${counter}")
             }
 
-            repeat(props.counter) { n ->
+            repeat(counter) { n ->
                 +hbox {
                     +label("Item #${(n + 1).toString().padStart(2)}")
                 }
@@ -51,16 +53,12 @@ class AppComponent : View<AppProps>() {
 }
 
 fun main(args: Array<String>) {
-    val c = ReconciliationContext(DOMPlatform)
+    lateinit var c: ReconciliationContext
     val driver = JSDriver(document.getElementById("app") ?: error("Check index.html. There has to be an id='app' node"),
             events = {
                 c.handleEvent(it)
             })
 
-    fun h (cnt: Int): Unit {
-        driver.apply(c.reconcile(AppComponent::class with AppProps(cnt, ::h)))
-    }
-
-    val updates = c.reconcile(AppComponent::class with AppProps(10, ::h))
-    driver.apply(updates)
+    c = ReconciliationContext(DOMPlatform, driver)
+    c.reconcile(AppComponent::class with AppProps)
 }

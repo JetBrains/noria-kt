@@ -15,13 +15,24 @@ interface RenderContext {
     fun <T : NElement<*>> emit(e: T): T
 }
 
+interface PlatformDriver {
+    fun applyUpdates(updates: List<Update>)
+}
+
 abstract class View<T : Props> {
     val props: T get() = _props ?: error("Props are not initialized yet")
     internal var _props: T? = null
+    lateinit var context: RenderContext
 
     open fun shouldUpdate(newProps: T): Boolean {
-        return props != newProps
+        return true // TODO props != newProps
     }
+
+    fun forceUpdate() {
+        (context as ReconciliationContext).updateFromRoot() // TODO!!! Update from this view downwards
+    }
+
+
     abstract fun RenderContext.render(): NElement<*>
 }
 
@@ -47,7 +58,7 @@ sealed class Update {
     data class DestroyNode(val node: Int) : Update()
 }
 
-class ReconciliationContext(override val platform: Platform) : RenderContext {
+class ReconciliationContext(override val platform: Platform, val driver: PlatformDriver) : RenderContext {
     private val updates: MutableList<Update> = mutableListOf()
     private var nextNode: Int = 0
     private val createdElements: MutableList<NElement<*>> = mutableListOf()
@@ -67,14 +78,19 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
 
     private fun makeNode() = nextNode++
 
-    fun reconcile(e: NElement<*>): List<Update> {
+    fun updateFromRoot() {
+        reconcile(root!!.element)
+    }
+
+    fun reconcile(e: NElement<*>) {
         root = reconcileImpl(root, e)
         garbage.forEach { supply(Update.DestroyNode(it)) }
         val updatesCopy = updates.toCollection(mutableListOf())
         updates.clear()
         garbage.clear()
         byTempId.clear()
-        return updatesCopy
+
+        driver.applyUpdates(updatesCopy)
     }
 
     private fun reconcileImpl(component: Instance?, e: NElement<*>?): Instance? {
@@ -135,6 +151,7 @@ class ReconciliationContext(override val platform: Platform) : RenderContext {
             is NElement.Class<*> -> {
                 if (view == null) {
                     view = (e.kClass as KClass<View<Props>>).instantiate()
+                    view.context = this
                 }
 
                 view.run {
