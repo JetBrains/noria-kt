@@ -22,17 +22,17 @@ class NSConstraint : PrimitiveProps() {
 data class MyProps(val x: Int = 0) : Props()
 class MyMacComponent : View<MyProps>() {
     override fun RenderContext.render(): NElement<*> {
-        val v1 = "NSView" with NSViewProps().apply {
+        val v1 = reify("NSView" with NSViewProps().apply {
             subviews.add("NSView" with NSViewProps())
-        }
-        val v2 = "NSView" with NSViewProps().apply {
+        })
+        val v2 = reify("NSView" with NSViewProps().apply {
             subviews.add("NSView" with NSViewProps())
             onClick = CallbackInfo(true) { event ->
                 println("hello")
             }
-        }
+        })
 
-        emit("NSLayoutConstraint" with NSConstraint().apply {
+        reify("NSLayoutConstraint" with NSConstraint().apply {
             view1 = v1
             view2 = v2
         })
@@ -92,8 +92,8 @@ data class HOProps(val x: NElement<*>,
 
 class HO : View<HOProps>() {
     override fun RenderContext.render(): NElement<*> {
-        val x1 = emit(props.x)
-        val y1 = emit(props.y)
+        val x1 = reify(props.x)
+        val y1 = reify(props.y)
         return SplitView::class with (SplitProps(left = x1, right = y1))
     }
 }
@@ -139,8 +139,8 @@ class CapturingDriver : PlatformDriver {
     }
 }
 
-data class WrapperProps(val w: NElement<*>?): Props()
-class Wrapper: View<WrapperProps>() {
+data class WrapperProps(val w: NElement<*>?) : Props()
+class Wrapper : View<WrapperProps>() {
     override fun RenderContext.render(): NElement<*> {
         return "div" with DomProps().apply {
             val w = props.w
@@ -154,7 +154,7 @@ class Wrapper: View<WrapperProps>() {
 data class EmitterProps(val i: Int) : Props()
 class Emitter : View<EmitterProps>() {
     override fun RenderContext.render(): NElement<*> {
-        val e = emit(label("some text"))
+        val e = reify(label("some text"))
         return "div" with DomProps().apply {
             if (props.i == 0) {
                 children.add(Wrapper::class with WrapperProps(e))
@@ -170,36 +170,7 @@ class Emitter : View<EmitterProps>() {
     }
 }
 
-data class RelocationProps(val i: Int) : Props()
-class Relocation : View<RelocationProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        val e = label("some text")
-
-        return "div" with DomProps().apply {
-            if (props.i == 0) {
-                children.add(Wrapper::class with WrapperProps(e))
-            } else {
-                children.add(Wrapper::class with WrapperProps(null))
-            }
-            children.add(Wrapper::class with WrapperProps(e))
-        }
-    }
-}
-
 class UpdatesTest {
-
-    @Test
-    fun `element relocates`() {
-        val d = CapturingDriver()
-        val c = ReconciliationContext(DOMPlatform, d)
-        c.reconcile(Relocation::class with RelocationProps(0))
-        d.updates()
-        c.reconcile(Relocation::class with RelocationProps(1))
-        val updates = d.updates()
-        assertEquals(listOf(
-                Update.Remove(node = 1, attr = "children", value = 2)
-        ), updates)
-    }
 
     @Test
     fun `emit`() {
@@ -222,7 +193,8 @@ class UpdatesTest {
         c.reconcile("div" with DomProps().apply {
             children.add("span" with DomProps().apply {
                 children.add("pre" with DomProps())
-            })})
+            })
+        })
         d.updates()
         c.reconcile("div" with DomProps())
         val updates = d.updates()
@@ -236,7 +208,7 @@ class UpdatesTest {
     fun `test app component`() {
         val d = CapturingDriver()
         val c = ReconciliationContext(DOMPlatform, d)
-        fun h (cnt: Int) {
+        fun h(cnt: Int) {
             c.reconcile(AppComponent::class with AppProps(cnt, ::h))
         }
 
