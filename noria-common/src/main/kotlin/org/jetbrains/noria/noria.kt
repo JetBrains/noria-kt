@@ -22,14 +22,15 @@ interface PlatformDriver {
 abstract class View<T : Props> {
     val props: T get() = _props ?: error("Props are not initialized yet")
     internal var _props: T? = null
-    internal lateinit var forceUpdateImpl: () -> Unit
+    internal lateinit var context: ReconciliationContext
+    internal lateinit var instance: UserInstance
 
     open fun shouldUpdate(newProps: T): Boolean {
         return true // TODO props != newProps
     }
 
     fun forceUpdate() {
-        forceUpdateImpl()
+        context.forceUpdate(instance)
     }
 
 
@@ -209,7 +210,8 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                 view = view,
                 backrefs = hashSetOf(),
                 env = env)
-        view.forceUpdateImpl = { forceUpdate(result) }
+        view.context = this
+        view.instance = result
         val oldComponents = oldByKeys.values
         val reference = UserReference(result)
         for (c in oldComponents) {
