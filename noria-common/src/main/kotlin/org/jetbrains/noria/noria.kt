@@ -22,14 +22,14 @@ interface PlatformDriver {
 abstract class View<T : Props> {
     val props: T get() = _props ?: error("Props are not initialized yet")
     internal var _props: T? = null
-    lateinit var context: ReconciliationContext
+    internal lateinit var forceUpdateImpl: () -> Unit
 
     open fun shouldUpdate(newProps: T): Boolean {
         return true // TODO props != newProps
     }
 
     fun forceUpdate() {
-        context.updateFromRoot() // TODO!!! Update from this view downwards
+        forceUpdateImpl()
     }
 
 
@@ -77,16 +77,27 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
     private fun makeNode() = nextNode++
 
     fun forceUpdate(c: UserInstance) {
+        val refs = c.backrefs.toHashSet()
         val oldNode = c.node
-        val newInstance = reconcileImpl(c, c.element, c.env)
-        val newNode = newInstance?.node
+        val newInstance = reconcileUser(c, c.element, c.env, true)
+        val newNode = newInstance.node
         if (oldNode != newNode) {
-
+            for (r in refs) {
+                newInstance.backrefs.add(r)
+                when (r) {
+                    is ListReference -> {
+                        supply(Update.Remove(r.referer.node!!, r.attr, oldNode))
+                        supply(Update.Add(r.referer.node!!, r.attr, newNode, r.index))
+                    }
+                    is AttrReference -> {
+                        supply(Update.SetAttr(r.referer.node!!, r.attr, newNode))
+                    }
+                }
+            }
         }
-    }
-
-    fun updateFromRoot() {
-        reconcile(root!!.element)
+        val updatesCopy = updates.toCollection(mutableListOf())
+        updates.clear()
+        driver.applyUpdates(updatesCopy)
     }
 
     fun reconcile(e: NElement<*>) {
@@ -100,7 +111,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             when {
                 e == null -> null
                 e is NElement.Primitive<*> -> reconcilePrimitive(component as PrimitiveInstance?, e, env)
-                (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e, env)
+                (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e, env, false)
                 e is NElement.Reified<*> -> env.lookup(e.id)
                 else -> throw IllegalArgumentException("don't know how to reconcile $e")
             }
@@ -146,7 +157,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
         }
     }
 
-    private fun reconcileUser(userComponent: UserInstance?, e: NElement<*>, env: Env): Instance {
+    private fun reconcileUser(userComponent: UserInstance?, e: NElement<*>, env: Env, isForceUpate: Boolean): Instance {
         var view = when {
             userComponent == null -> null
             userComponent.element.type != e.type -> null
@@ -158,11 +169,10 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             is NElement.Class<*> -> {
                 if (view == null) {
                     view = (e.kClass as KClass<View<Props>>).instantiate()
-                    view.context = this
                 }
 
                 view.run {
-                    if (_props == null || shouldUpdate(e.props)) {
+                    if (_props == null || isForceUpate || shouldUpdate(e.props)) {
                         _props = e.props
                         renderContext.render()
                     } else {
@@ -174,6 +184,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             is NElement.Reified -> throw IllegalArgumentException("reified element is not a subject to reconcileUser")
             is NElement.Primitive -> throw IllegalArgumentException("reconcile user with primitive!")
         }
+        view as View<*>
 
         assignKeys(renderContext.createdElements)
         val oldByKeys = userComponent?.byKeys ?: emptyMap()
@@ -198,6 +209,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                 view = view,
                 backrefs = hashSetOf(),
                 env = env)
+        view.forceUpdateImpl = { forceUpdate(result) }
         val oldComponents = oldByKeys.values
         val reference = UserReference(result)
         for (c in oldComponents) {

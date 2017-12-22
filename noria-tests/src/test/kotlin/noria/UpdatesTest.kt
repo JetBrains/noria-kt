@@ -2,6 +2,7 @@ package noria
 
 import noria.views.DomEvent
 import noria.views.DomProps
+import noria.views.InputProps
 import org.jetbrains.noria.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -151,8 +152,8 @@ class Wrapper : View<WrapperProps>() {
     }
 }
 
-data class EmitterProps(val i: Int) : Props()
-class Emitter : View<EmitterProps>() {
+data class ReifiesProps(val i: Int) : Props()
+class Reifies : View<ReifiesProps>() {
     override fun RenderContext.render(): NElement<*> {
         val e = reify(label("some text"))
         return "div" with DomProps().apply {
@@ -170,15 +171,46 @@ class Emitter : View<EmitterProps>() {
     }
 }
 
+class RenderCounter : View<Props>() {
+    var counter = 0
+    override fun RenderContext.render(): NElement<*> {
+        return (if (counter % 2 == 0) "div" else "span") with DomProps().apply {
+            click = CallbackInfo(true) {
+                counter++
+                forceUpdate()
+            }
+        }
+    }
+
+}
+
 class UpdatesTest {
 
     @Test
-    fun `emit`() {
+    fun `test force update`() {
         val d = CapturingDriver()
         val c = ReconciliationContext(DOMPlatform, d)
-        c.reconcile(Emitter::class with EmitterProps(0))
+        c.reconcile("div" with DomProps().apply {
+            children.add(RenderCounter::class with Props())
+        })
+        val updates0 = d.updates()
+        c.handleEvent(EventInfo(1, "click", DomEvent()))
+        val updates1 = d.updates()
+        assertEquals(listOf(
+                Update.DestroyNode(node = 1),
+                Update.MakeNode(node = 2, type = "span", parameters = emptyMap()),
+                Update.SetCallback(node = 2, attr = "click", async = true),
+                Update.Remove(node = 0, attr = "children", value = 1),
+                Update.Add(node = 0, attr = "children", value = 2, index = 0)), updates1)
+    }
+
+    @Test
+    fun `test reify`() {
+        val d = CapturingDriver()
+        val c = ReconciliationContext(DOMPlatform, d)
+        c.reconcile(Reifies::class with ReifiesProps(0))
         d.updates()
-        c.reconcile(Emitter::class with EmitterProps(1))
+        c.reconcile(Reifies::class with ReifiesProps(1))
         val updates = d.updates()
         assertEquals(listOf(
                 Update.Remove(node = 2, attr = "children", value = 0),
