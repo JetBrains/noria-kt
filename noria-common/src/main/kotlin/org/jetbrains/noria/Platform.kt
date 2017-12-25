@@ -10,6 +10,8 @@ open class Platform {
     }
 }
 
+class RootProps(val id: String, val child: NElement<*>) : Props()
+val rootCT = PlatformComponentType<RootProps>()
 val hboxCT = PlatformComponentType<BoxProps>()
 val vboxCT = PlatformComponentType<BoxProps>()
 val labelCT = PlatformComponentType<LabelProps>()

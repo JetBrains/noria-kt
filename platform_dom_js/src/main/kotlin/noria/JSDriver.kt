@@ -21,9 +21,16 @@ private fun Element.insertChildAtIndex(child: Node, index: Int) {
     }
 }
 
-class JSDriver(val mountPoint: Element, val events: (EventInfo) -> Unit) : PlatformDriver {
+class JSDriver(val events: (EventInfo) -> Unit) : PlatformDriver {
     private val nodes: dynamic = js("({})")
     private val callbacks = mutableMapOf<Pair<Int, String>, EventListener>()
+
+    private val roots = mutableMapOf<String?, Element>()
+
+    fun registerRoot(id: String, root: Element) {
+        if (roots.containsKey(id)) error("Root $id is already registered")
+        roots[id] = root
+    }
 
     override fun applyUpdates(updates: List<Update>) {
         for (u in updates) {
@@ -32,15 +39,15 @@ class JSDriver(val mountPoint: Element, val events: (EventInfo) -> Unit) : Platf
                 is Update.MakeNode -> {
                     if (nodes[u.node] != null) error("Update $u. Node already exists")
                     val newElement: Node = when(u.type) {
+                        "root" -> {
+                            val id = u.parameters["id"] as? String
+                            roots[id] ?: error("Root $id has not been registered")
+                        }
                         "textnode" -> document.createTextNode("")
                         else -> document.createElement(u.type)
                     }
 
                     nodes[u.node] = newElement
-
-                    if (u.node == 0) {
-                        mountPoint.appendChild(newElement)
-                    }
                 }
 
                 is Update.SetAttr -> {

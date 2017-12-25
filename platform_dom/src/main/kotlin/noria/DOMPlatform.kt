@@ -1,12 +1,11 @@
 package noria
 
-import noria.views.Button
-import noria.views.FlexBox
-import noria.views.Label
+import noria.views.*
 import org.jetbrains.noria.*
 
 object DOMPlatform : Platform() {
     init {
+        register(rootCT, ::DOMRoot)
         register(hboxCT, ::FlexBox)
         register(vboxCT, ::FlexBox)
         register(labelCT, ::Label)

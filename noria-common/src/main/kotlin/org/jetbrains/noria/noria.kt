@@ -10,7 +10,6 @@ open class Props {
 }
 
 interface RenderContext {
-    val platform: Platform
     fun <T : Props> reify(e: NElement<T>): NElement<T>
 }
 
@@ -21,7 +20,7 @@ interface PlatformDriver {
 abstract class View<T : Props> {
     val props: T get() = _props ?: error("Props are not initialized yet")
     internal var _props: T? = null
-    internal lateinit var context: ReconciliationContext
+    internal lateinit var context: GraphState
     internal lateinit var instance: UserInstance
 
     open fun shouldUpdate(newProps: T): Boolean {
@@ -68,17 +67,8 @@ class Env(private val parent: Env?, private val vars: Map<Int, Instance>) {
     fun lookup(i: Int): Instance? = vars[i] ?: parent?.lookup(i)
 }
 
-class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) {
+class ReconciliationState(val graph: GraphState) {
     private val updates: MutableList<Update> = mutableListOf()
-    private var nextNode: Int = 0
-    private val callbacksTable: MutableMap<Int, MutableMap<String, CallbackInfo<*>>> = mutableMapOf()
-    private var root: Instance? = null
-
-    private fun supply(u: Update) {
-        updates.add(u)
-    }
-
-    private fun makeNode() = nextNode++
 
     fun forceUpdate(c: UserInstance) {
         val refs = c.backrefs.toHashSet()
@@ -99,16 +89,22 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                 }
             }
         }
-        val updatesCopy = updates.toCollection(mutableListOf())
-        updates.clear()
-        driver.applyUpdates(updatesCopy)
+        graph.driver.applyUpdates(updates)
     }
 
-    fun reconcile(e: NElement<*>) {
-        root = reconcileImpl(root, e, root?.env ?: Env(null, emptyMap()))
-        val updatesCopy = updates.toCollection(mutableListOf())
-        updates.clear()
-        driver.applyUpdates(updatesCopy)
+    private fun supply(u: Update) {
+        updates.add(u)
+    }
+
+    fun mountRoot(e: NElement<RootProps>) {
+        reconcileImpl(null, e, Env(null, emptyMap()))
+        graph.driver.applyUpdates(updates)
+    }
+
+    //TODO remove, tests only
+    fun reconcile(e: NElement<RootProps>): List<Update> {
+        reconcileImpl(null, e, Env(null, emptyMap()))
+        return updates
     }
 
     private fun reconcileImpl(component: Instance?, e: NElement<*>?, env: Env): Instance? =
@@ -116,7 +112,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                 e == null -> null
                 e is NElement.HostElement<*> -> reconcileHost(component as HostInstance?, e, env)
                 (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e, env, false)
-                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, (platform.resolve(e.type as PlatformComponentType<*>) as Constructor<Props>) with e.props, env)
+                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, (graph.platform.resolve(e.type as PlatformComponentType<*>) as Constructor<Props>) with e.props, env)
                 e is NElement.Reified<*> -> env.lookup(e.id)
                 else -> throw IllegalArgumentException("don't know how to reconcile $e")
             }
@@ -153,8 +149,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
         }
     }
 
-    private class RenderContextImpl(val createdElements: MutableList<NElement.Reified<*>> = mutableListOf(),
-                                    override val platform: Platform) : RenderContext {
+    private class RenderContextImpl(val createdElements: MutableList<NElement.Reified<*>> = mutableListOf()) : RenderContext {
         override fun <T : Props> reify(e: NElement<T>): NElement<T> {
             val reified = NElement.Reified(Env.nextVar++, e)
             createdElements.add(reified)
@@ -168,7 +163,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             userComponent.element.type != e.type -> null
             else -> userComponent.view as View<Props>?
         }
-        val renderContext = RenderContextImpl(platform = platform)
+        val renderContext = RenderContextImpl()
         val substElement = when (e) {
             is NElement.Fun<*> -> (e as NElement.Fun<Props>).type(e.props)
             is NElement.Class<*> -> {
@@ -213,7 +208,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                 view = view,
                 backrefs = hashSetOf(),
                 env = env)
-        view?.context = this
+        view?.context = graph
         view?.instance = result
         val oldComponents = oldByKeys.values
         val reference = UserReference(result)
@@ -269,7 +264,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             supply(Update.DestroyNode(hostInstance.node!!))
             return reconcileHost(null, e, env)
         }
-        val node: Int = hostInstance?.node ?: makeNode()
+        val node: Int = hostInstance?.node ?: graph.makeNode()
         if (hostInstance?.node == null) {
             supply(Update.MakeNode(node, (e.type as HostComponentType<*>).type, e.props.constructorParameters))
         }
@@ -309,7 +304,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             }
         }
 
-        val callbacks = callbacksTable[node] ?: mutableMapOf()
+        val callbacks = graph.callbacksTable[node] ?: mutableMapOf()
         val callbacksKeySet = e.props.callbacks.keys.union(callbacks.keys)
         for (attr in callbacksKeySet) {
             val oldCB = callbacks[attr]
@@ -325,7 +320,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                 callbacks.remove(attr)
             }
         }
-        callbacksTable[node] = callbacks
+        graph.callbacksTable[node] = callbacks
         val result = hostInstance?.apply {
             this.element = e
             this.childrenProps = childrenMap
@@ -379,12 +374,27 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
         }
         return reconciledList
     }
+}
+
+class GraphState(val platform: Platform, val driver: PlatformDriver) {
+    private var nextNode: Int = 0
+    internal val callbacksTable: MutableMap<Int, MutableMap<String, CallbackInfo<*>>> = mutableMapOf()
+
+    internal fun makeNode() = nextNode++
+
+    fun forceUpdate(c: UserInstance) {
+        ReconciliationState(this).forceUpdate(c)
+    }
 
     fun handleEvent(e: EventInfo) {
         val callbackInfo = callbacksTable[e.source]?.get(e.name)
         if (callbackInfo != null) {
             (callbackInfo as CallbackInfo<Event>).cb(e.event)
         }
+    }
+
+    fun mount(id: String, element: NElement<*>) {
+        ReconciliationState(this).mountRoot(rootCT with RootProps(id, element))
     }
 }
 

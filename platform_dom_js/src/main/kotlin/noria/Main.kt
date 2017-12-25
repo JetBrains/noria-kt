@@ -3,7 +3,7 @@ package noria
 import org.jetbrains.noria.JustifyContent
 import org.jetbrains.noria.NElement
 import org.jetbrains.noria.Props
-import org.jetbrains.noria.ReconciliationContext
+import org.jetbrains.noria.GraphState
 import org.jetbrains.noria.RenderContext
 import org.jetbrains.noria.View
 import org.jetbrains.noria.button
@@ -53,12 +53,13 @@ class AppComponent : View<AppProps>() {
 }
 
 fun main(args: Array<String>) {
-    lateinit var c: ReconciliationContext
-    val driver = JSDriver(document.getElementById("app") ?: error("Check index.html. There has to be an id='app' node"),
-            events = {
-                c.handleEvent(it)
-            })
+    lateinit var c: GraphState
+    val driver = JSDriver(events = {
+        c.handleEvent(it)
+    })
 
-    c = ReconciliationContext(DOMPlatform, driver)
-    c.reconcile(::AppComponent with AppProps)
+    driver.registerRoot("app", document.getElementById("app") ?: error("There should be an 'app' element in DOM"))
+    c = GraphState(DOMPlatform, driver)
+
+    c.mount("app", ::AppComponent with AppProps)
 }
