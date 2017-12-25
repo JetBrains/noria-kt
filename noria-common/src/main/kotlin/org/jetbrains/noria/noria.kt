@@ -3,7 +3,6 @@
 package org.jetbrains.noria
 
 import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
 open class Props {
@@ -33,15 +32,15 @@ abstract class View<T : Props> {
         context.forceUpdate(instance)
     }
 
-
     abstract fun RenderContext.render(): NElement<*>
 }
 
 typealias Render<T> = (T) -> NElement<*>
+typealias Constructor<T> = () -> View<T>
 
 sealed class NElement<out T : Props>(val props: T, val type: Any) {
     internal class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props, f)
-    internal class Class<out T : Props>(val kClass: KClass<*>, props: T) : NElement<T>(props, kClass)
+    internal class Class<T : Props>(val kClass: Constructor<T>, props: T) : NElement<T>(props, kClass)
     internal class Primitive<out T : PrimitiveProps>(type: String, props: T) : NElement<T>(props, type)
     internal class Reified<out T : Props>(val id: Int, val e: NElement<T>) : NElement<T>(e.props, e.type)
 }
@@ -169,7 +168,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             is NElement.Fun<*> -> (e as NElement.Fun<Props>).f(e.props)
             is NElement.Class<*> -> {
                 if (view == null) {
-                    view = (e.kClass as KClass<View<Props>>).instantiate()
+                    view = e.kClass() as View<Props>
                 }
 
                 view.run {
@@ -185,8 +184,6 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             is NElement.Reified -> throw IllegalArgumentException("reified element is not a subject to reconcileUser")
             is NElement.Primitive -> throw IllegalArgumentException("reconcile user with primitive!")
         }
-        view as View<*>
-
         assignKeys(renderContext.createdElements)
         val oldByKeys = userComponent?.byKeys ?: emptyMap()
         val newComponents = reconcileByKeys(oldByKeys, renderContext.createdElements.map { it.e }, env)
@@ -210,8 +207,8 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                 view = view,
                 backrefs = hashSetOf(),
                 env = env)
-        view.context = this
-        view.instance = result
+        view?.context = this
+        view?.instance = result
         val oldComponents = oldByKeys.values
         val reference = UserReference(result)
         for (c in oldComponents) {

@@ -60,5 +60,5 @@ fun main(args: Array<String>) {
             })
 
     c = ReconciliationContext(DOMPlatform, driver)
-    c.reconcile(AppComponent::class with AppProps)
+    c.reconcile(::AppComponent with AppProps)
 }

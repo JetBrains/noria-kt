@@ -6,8 +6,8 @@ import noria.views.Label
 import org.jetbrains.noria.Platform
 
 object DOMPlatform : Platform {
-    override fun hbox() = FlexBox::class
-    override fun vbox() = FlexBox::class
-    override fun label() = Label::class
-    override fun button() = Button::class
+    override fun hbox() = ::FlexBox
+    override fun vbox() = ::FlexBox
+    override fun label() = ::Label
+    override fun button() = ::Button
 }
