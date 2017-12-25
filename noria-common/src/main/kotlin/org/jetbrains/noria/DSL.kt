@@ -10,4 +10,5 @@ abstract class Container<T: ContainerProps> : View<T>()
 
 infix fun <T: Props> Render<T>.with(props: T) : NElement<T> = NElement.Fun(this, props)
 infix fun <T: Props> Constructor<T>.with(props: T) : NElement<T> = NElement.Class(this, props)
-infix fun <T: PrimitiveProps> String.with(props: T) : NElement<T> = NElement.Primitive(this, props)
+infix fun <T: HostProps> HostComponentType<T>.with(props: T) : NElement<T> = NElement.HostElement(this, props)
+infix fun <T: Props> PlatformComponentType<T>.with(props: T) : NElement<T> = NElement.PlatformDispatch(this, props)

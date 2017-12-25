@@ -2,6 +2,8 @@ package noria
 
 import noria.views.DomEvent
 import noria.views.DomProps
+import noria.views.TextNodeProps
+import noria.views.textNodeCT
 import org.jetbrains.noria.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,35 +11,38 @@ import kotlin.test.assertTrue
 
 data class Click(val buttonNum: Int, val clickCount: Int) : Event()
 
-class NSViewProps : PrimitiveProps() {
+class NSViewProps : HostProps() {
     val subviews: MutableList<NElement<NSViewProps>> by elementList()
     var onClick by handler<Click>()
 }
 
-class NSConstraint : PrimitiveProps() {
+class NSConstraint : HostProps() {
     var view1: NElement<NSViewProps> by element()
     var view2: NElement<NSViewProps> by element()
 }
 
+val NSView = HostComponentType<NSViewProps>("NSView")
+val NSLayoutConstraint = HostComponentType<NSConstraint>("NSLayoutConstraint")
+
 data class MyProps(val x: Int = 0) : Props()
 class MyMacComponent : View<MyProps>() {
     override fun RenderContext.render(): NElement<*> {
-        val v1 = reify("NSView" with NSViewProps().apply {
-            subviews.add("NSView" with NSViewProps())
+        val v1 = reify(NSView with NSViewProps().apply {
+            subviews.add(NSView with NSViewProps())
         })
-        val v2 = reify("NSView" with NSViewProps().apply {
-            subviews.add("NSView" with NSViewProps())
+        val v2 = reify(NSView with NSViewProps().apply {
+            subviews.add(NSView with NSViewProps())
             onClick = CallbackInfo(true) { event ->
                 println("hello")
             }
         })
 
-        reify("NSLayoutConstraint" with NSConstraint().apply {
+        reify(NSLayoutConstraint with NSConstraint().apply {
             view1 = v1
             view2 = v2
         })
 
-        return "NSView" with NSViewProps().apply {
+        return NSView with NSViewProps().apply {
             subviews.add(v1)
             if (props.x > 0) {
                 subviews.add(v2)
@@ -46,26 +51,26 @@ class MyMacComponent : View<MyProps>() {
     }
 }
 
-class TestProps1 : PrimitiveProps() {
+class TestProps1 : HostProps() {
     val children: MutableList<NElement<*>> by elementList()
 }
 
 
-class TextNodeProps : PrimitiveProps() {
-    var text: String by value()
-}
-
 data class LabelProps(val text: String) : Props()
 class Label : View<LabelProps>() {
     override fun RenderContext.render(): NElement<*> {
-        return "text-node" with TextNodeProps().apply { text = props.text }
+        return textNodeCT with noria.views.TextNodeProps().apply { text = props.text }
     }
 }
+
+val Div = HostComponentType<DomProps>("div")
+val Span = HostComponentType<DomProps>("span")
+val Pre = HostComponentType<DomProps>("pre")
 
 data class SimpleContainerProps(val x: Int) : Props()
 class SimpleContainer : View<SimpleContainerProps>() {
     override fun RenderContext.render(): NElement<*> {
-        return "div" with TestProps1().apply {
+        return Div with DomProps().apply {
             (0..props.x).mapTo(children) {
                 ::Label with LabelProps("$it").apply {
                     key = it
@@ -80,7 +85,7 @@ data class SplitProps(val left: NElement<*>,
 
 class SplitView : View<SplitProps>() {
     override fun RenderContext.render(): NElement<*> {
-        return "div" with TestProps1().apply {
+        return Div with DomProps().apply {
             children.add(props.left)
             children.add(props.right)
         }
@@ -142,7 +147,7 @@ class CapturingDriver : PlatformDriver {
 data class WrapperProps(val w: NElement<*>?) : Props()
 class Wrapper : View<WrapperProps>() {
     override fun RenderContext.render(): NElement<*> {
-        return "div" with DomProps().apply {
+        return Div with DomProps().apply {
             val w = props.w
             if (w != null) {
                 children.add(w)
@@ -155,7 +160,7 @@ data class ReifiesProps(val i: Int) : Props()
 class Reifies : View<ReifiesProps>() {
     override fun RenderContext.render(): NElement<*> {
         val e = reify(label("some text"))
-        return "div" with DomProps().apply {
+        return Div with DomProps().apply {
             if (props.i == 0) {
                 children.add(::Wrapper with WrapperProps(e))
             } else {
@@ -173,7 +178,7 @@ class Reifies : View<ReifiesProps>() {
 class RenderCounter : View<Props>() {
     var counter = 0
     override fun RenderContext.render(): NElement<*> {
-        return (if (counter % 2 == 0) "div" else "span") with DomProps().apply {
+        return (if (counter % 2 == 0) Div else Span) with DomProps().apply {
             click = CallbackInfo(true) {
                 counter++
                 forceUpdate()
@@ -189,7 +194,7 @@ class UpdatesTest {
     fun `test force update`() {
         val d = CapturingDriver()
         val c = ReconciliationContext(DOMPlatform, d)
-        c.reconcile("div" with DomProps().apply {
+        c.reconcile(Div with DomProps().apply {
             children.add(::RenderCounter with Props())
         })
         val updates0 = d.updates()
@@ -221,13 +226,13 @@ class UpdatesTest {
     fun `recursive destroy`() {
         val d = CapturingDriver()
         val c = ReconciliationContext(DOMPlatform, d)
-        c.reconcile("div" with DomProps().apply {
-            children.add("span" with DomProps().apply {
-                children.add("pre" with DomProps())
+        c.reconcile(Div with DomProps().apply {
+            children.add(Span with DomProps().apply {
+                children.add(Pre with DomProps())
             })
         })
         d.updates()
-        c.reconcile("div" with DomProps())
+        c.reconcile(Div with DomProps())
         val updates = d.updates()
         assertEquals(listOf(
                 Update.Remove(node = 0, attr = "children", value = 1),
@@ -251,9 +256,14 @@ class UpdatesTest {
     fun `testing high-order components`() {
         val d = CapturingDriver()
         val c = ReconciliationContext(DOMPlatform, d)
+        val Foo = HostComponentType<TestProps1>("foo")
+        val Bar = HostComponentType<TestProps1>("bar")
+        val Baz = HostComponentType<TestProps1>("baz")
+        val Fizz = HostComponentType<TestProps1>("fizz")
+        val Fuzz = HostComponentType<TestProps1>("fuzz")
         c.reconcile(::HO with HOProps(
-                x = "foo" with TestProps1(),
-                y = "bar" with TestProps1()))
+                x = Foo with TestProps1(),
+                y = Bar with TestProps1()))
         assertEquals(listOf(
                 Update.MakeNode(node = 0, type = "foo", parameters = emptyMap()),
                 Update.MakeNode(node = 1, type = "bar", parameters = emptyMap()),
@@ -263,8 +273,8 @@ class UpdatesTest {
         ), d.updates())
 
         c.reconcile(::HO with HOProps(
-                x = "foo" with TestProps1(),
-                y = "baz" with TestProps1()))
+                x = Foo with TestProps1(),
+                y = Baz with TestProps1()))
         assertEquals(listOf(
                 Update.MakeNode(node = 3, type = "baz", parameters = emptyMap()),
                 Update.Remove(node = 2, attr = "children", value = 1),
@@ -273,8 +283,8 @@ class UpdatesTest {
         ), d.updates())
 
         c.reconcile(::HO with HOProps(
-                x = "fizz" with TestProps1(),
-                y = "fuzz" with TestProps1()))
+                x = Fizz with TestProps1(),
+                y = Fuzz with TestProps1()))
         assertEquals(listOf(
                 Update.MakeNode(node = 4, type = "fizz", parameters = emptyMap()),
                 Update.MakeNode(node = 5, type = "fuzz", parameters = emptyMap()),
@@ -302,9 +312,9 @@ class UpdatesTest {
                 Update.DestroyNode(node = 3)), d.updates())
         c.reconcile(::SimpleContainer with SimpleContainerProps(x = 3))
         assertEquals(listOf(
-                Update.MakeNode(node = 4, type = "text-node", parameters = emptyMap()),
+                Update.MakeNode(node = 4, type = "textnode", parameters = emptyMap()),
                 Update.SetAttr(node = 4, attr = "text", value = "2"),
-                Update.MakeNode(node = 5, type = "text-node", parameters = emptyMap()),
+                Update.MakeNode(node = 5, type = "textnode", parameters = emptyMap()),
                 Update.SetAttr(node = 5, attr = "text", value = "3"),
                 Update.Add(node = 0, attr = "children", value = 4, index = 2),
                 Update.Add(node = 0, attr = "children", value = 5, index = 3)
@@ -318,11 +328,14 @@ class UpdatesTest {
     @Test
     fun `recnciliation of sequences`() {
         val d = CapturingDriver()
-
+        val hey = HostComponentType<TestProps1>("hey")
+        val hoy = HostComponentType<TestProps1>("hoy")
+        val hiy = HostComponentType<TestProps1>("hiy")
+        val fu = HostComponentType<TestProps1>("fu")
         val c = ReconciliationContext(DOMPlatform, d)
-        val e0 = "div" with TestProps1().apply {
-            children.add("hey" with TestProps1().apply { key = "hey" })
-            children.add("hoy" with TestProps1().apply { key = "hoy" })
+        val e0 = Div with DomProps().apply {
+            children.add(hey with TestProps1().apply { key = "hey" })
+            children.add(hoy with TestProps1().apply { key = "hoy" })
         }
         c.reconcile(e0)
         assertEquals(listOf(
@@ -333,10 +346,10 @@ class UpdatesTest {
                 Update.Add(node = 0, attr = "children", value = 2, index = 1)), d.updates())
         c.reconcile(e0)
         assert(d.updates().isEmpty())
-        val e1 = "div" with TestProps1().apply {
-            children.add("hiy" with TestProps1().apply { key = "hiy" })
-            children.add("hoy" with TestProps1().apply { key = "hoy" })
-            children.add("fu" with TestProps1().apply { key = "fu" })
+        val e1 = Div with DomProps().apply {
+            children.add(hiy with TestProps1().apply { key = "hiy" })
+            children.add(hoy with TestProps1().apply { key = "hoy" })
+            children.add(fu with TestProps1().apply { key = "fu" })
         }
         c.reconcile(e1)
         assertEquals(listOf(
@@ -346,10 +359,10 @@ class UpdatesTest {
                 Update.Add(node = 0, attr = "children", value = 3, index = 0),
                 Update.Add(node = 0, attr = "children", value = 4, index = 2),
                 Update.DestroyNode(node = 1)), d.updates())
-        val e2 = "div" with TestProps1().apply {
-            children.add("hoy" with TestProps1().apply { key = "hoy" })
-            children.add("hiy" with TestProps1().apply { key = "hiy" })
-            children.add("fu" with TestProps1().apply { key = "fu" })
+        val e2 = Div with DomProps().apply {
+            children.add(hoy with TestProps1().apply { key = "hoy" })
+            children.add(hiy with TestProps1().apply { key = "hiy" })
+            children.add(fu with TestProps1().apply { key = "fu" })
         }
         c.reconcile(e2)
         assertEquals(listOf(
@@ -362,24 +375,24 @@ class UpdatesTest {
     fun `reuse with same type`() {
         val d = CapturingDriver()
         val c = ReconciliationContext(DOMPlatform, d)
-        val e0 = "div" with TestProps1().apply {
-            children.add("text-node" with TextNodeProps().apply {
+        val e0 = Div with DomProps().apply {
+            children.add(textNodeCT with TextNodeProps().apply {
                 key = 1
                 text = "1"
             })
-            children.add("text-node" with TextNodeProps().apply {
+            children.add(textNodeCT with TextNodeProps().apply {
                 key = 2
                 text = "2"
             })
         }
         c.reconcile(e0)
         d.updates()
-        val e1 = "div" with TestProps1().apply {
-            children.add("text-node" with TextNodeProps().apply {
+        val e1 = Div with DomProps().apply {
+            children.add(textNodeCT with TextNodeProps().apply {
                 key = 3
                 text = "3"
             })
-            children.add("text-node" with TextNodeProps().apply {
+            children.add(textNodeCT with TextNodeProps().apply {
                 key = 1
                 text = "1"
             })
@@ -389,12 +402,12 @@ class UpdatesTest {
                 Update.SetAttr(node = 2, attr = "text", value = "3"),
                 Update.Remove(node = 0, attr = "children", value = 2),
                 Update.Add(node = 0, attr = "children", value = 2, index = 0)), d.updates())
-        val e2 = "div" with TestProps1().apply {
-            children.add("text-node" with TextNodeProps().apply {
+        val e2 = Div with DomProps().apply {
+            children.add(textNodeCT with TextNodeProps().apply {
                 key = 1
                 text = "1"
             })
-            children.add("text-node" with TextNodeProps().apply {
+            children.add(textNodeCT with TextNodeProps().apply {
                 key = 4
                 text = "4"
             })

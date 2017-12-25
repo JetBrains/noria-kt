@@ -38,11 +38,16 @@ abstract class View<T : Props> {
 typealias Render<T> = (T) -> NElement<*>
 typealias Constructor<T> = () -> View<T>
 
-sealed class NElement<out T : Props>(val props: T, val type: Any) {
-    internal class Fun<T : Props>(val f: Render<T>, props: T) : NElement<T>(props, f)
-    internal class Class<T : Props>(val kClass: Constructor<T>, props: T) : NElement<T>(props, kClass)
-    internal class Primitive<out T : PrimitiveProps>(type: String, props: T) : NElement<T>(props, type)
-    internal class Reified<out T : Props>(val id: Int, val e: NElement<T>) : NElement<T>(e.props, e.type)
+interface ComponentType<T: Props>
+data class HostComponentType<T: HostProps>(val type: String) : ComponentType<T>
+class PlatformComponentType<T: Props>: ComponentType<T>
+
+sealed class NElement<T : Props>(val props: T, open val type: Any) {
+    internal class Fun<T : Props>(override val type: Render<T>, props: T) : NElement<T>(props, type)
+    internal class Class<T : Props>(override val type: Constructor<T>, props: T) : NElement<T>(props, type)
+    internal class HostElement<T : HostProps>(override val type: HostComponentType<T>, props: T) : NElement<T>(props, type)
+    internal class PlatformDispatch<T : Props>(override val type: PlatformComponentType<T>, props: T) : NElement<T>(props, type)
+    internal class Reified<T : Props>(val id: Int, val e: NElement<T>) : NElement<T>(e.props, e.type)
 }
 
 sealed class Update {
@@ -66,7 +71,6 @@ class Env(private val parent: Env?, private val vars: Map<Int, Instance>) {
 class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) {
     private val updates: MutableList<Update> = mutableListOf()
     private var nextNode: Int = 0
-
     private val callbacksTable: MutableMap<Int, MutableMap<String, CallbackInfo<*>>> = mutableMapOf()
     private var root: Instance? = null
 
@@ -110,8 +114,9 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
     private fun reconcileImpl(component: Instance?, e: NElement<*>?, env: Env): Instance? =
             when {
                 e == null -> null
-                e is NElement.Primitive<*> -> reconcilePrimitive(component as PrimitiveInstance?, e, env)
+                e is NElement.HostElement<*> -> reconcileHost(component as HostInstance?, e, env)
                 (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e, env, false)
+                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, (platform.resolve(e.type as PlatformComponentType<*>) as Constructor<Props>) with e.props, env)
                 e is NElement.Reified<*> -> env.lookup(e.id)
                 else -> throw IllegalArgumentException("don't know how to reconcile $e")
             }
@@ -165,10 +170,10 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
         }
         val renderContext = RenderContextImpl(platform = platform)
         val substElement = when (e) {
-            is NElement.Fun<*> -> (e as NElement.Fun<Props>).f(e.props)
+            is NElement.Fun<*> -> (e as NElement.Fun<Props>).type(e.props)
             is NElement.Class<*> -> {
                 if (view == null) {
-                    view = e.kClass() as View<Props>
+                    view = e.type() as View<Props>
                 }
 
                 view.run {
@@ -181,8 +186,9 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                     }
                 }
             }
-            is NElement.Reified -> throw IllegalArgumentException("reified element is not a subject to reconcileUser")
-            is NElement.Primitive -> throw IllegalArgumentException("reconcile user with primitive!")
+            else -> {
+                error("reconcileUser expects Class or Fun elementm got $e")
+            }
         }
         assignKeys(renderContext.createdElements)
         val oldByKeys = userComponent?.byKeys ?: emptyMap()
@@ -237,7 +243,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
                     gc(it)
                 }
             }
-            is PrimitiveInstance -> {
+            is HostInstance -> {
                 c.componentProps.forEach { (attr, comp) ->
                     comp?.backrefs?.remove(AttrReference(c, attr))
                     if (comp?.backrefs?.isEmpty() == true) {
@@ -258,19 +264,18 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
     }
 
 
-    private fun reconcilePrimitive(primitiveComponent: PrimitiveInstance?, e: NElement<*>, env: Env): PrimitiveInstance {
-        e as NElement.Primitive<*>
-        if (primitiveComponent != null && primitiveComponent.element.type != e.type) {
-            supply(Update.DestroyNode(primitiveComponent.node!!))
-            return reconcilePrimitive(null, e, env)
+    private fun reconcileHost(hostInstance: HostInstance?, e: NElement.HostElement<*>, env: Env): HostInstance {
+        if (hostInstance != null && hostInstance.element.type != e.type) {
+            supply(Update.DestroyNode(hostInstance.node!!))
+            return reconcileHost(null, e, env)
         }
-        val node: Int = primitiveComponent?.node ?: makeNode()
-        if (primitiveComponent?.node == null) {
-            supply(Update.MakeNode(node, e.type as String, e.props.constructorParameters))
+        val node: Int = hostInstance?.node ?: makeNode()
+        if (hostInstance?.node == null) {
+            supply(Update.MakeNode(node, (e.type as HostComponentType<*>).type, e.props.constructorParameters))
         }
 
         val childrenMap = mutableMapOf<String, List<Instance>>()
-        val oldChildrenMap = primitiveComponent?.childrenProps
+        val oldChildrenMap = hostInstance?.childrenProps
         val childrenKeySet = e.props.childrenMap.keys.union(oldChildrenMap?.keys ?: emptySet())
         for (attr in childrenKeySet) {
             val newChildren = e.props.childrenMap[attr]
@@ -281,7 +286,7 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
         }
 
         val componentsMap = mutableMapOf<String, Instance?>()
-        val oldComponentsMap = primitiveComponent?.componentProps
+        val oldComponentsMap = hostInstance?.componentProps
         val componentKeySet = e.props.componentsMap.keys.union(oldComponentsMap?.keys ?: emptySet())
         for (attr in componentKeySet) {
             val element = e.props.componentsMap[attr]
@@ -294,11 +299,11 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
         }
 
         val valuesMap = mutableMapOf<String, Any?>()
-        val valuesKeySet = e.props.valuesMap.keys.union(primitiveComponent?.valueProps?.keys ?: emptySet())
+        val valuesKeySet = e.props.valuesMap.keys.union(hostInstance?.valueProps?.keys ?: emptySet())
         for (attr in valuesKeySet) {
             val value = e.props.valuesMap[attr]
             valuesMap[attr] = value
-            val oldValue = primitiveComponent?.valueProps?.get(attr)
+            val oldValue = hostInstance?.valueProps?.get(attr)
             if (value != oldValue) {
                 supply(Update.SetAttr(node, attr, value))
             }
@@ -321,14 +326,14 @@ class ReconciliationContext(val platform: Platform, val driver: PlatformDriver) 
             }
         }
         callbacksTable[node] = callbacks
-        val result = primitiveComponent?.apply {
+        val result = hostInstance?.apply {
             this.element = e
             this.childrenProps = childrenMap
             this.componentProps = componentsMap
             this.valueProps = valuesMap
             this.env = env
             this.node = node
-        } ?: PrimitiveInstance(
+        } ?: HostInstance(
                 element = e,
                 childrenProps = childrenMap,
                 componentProps = componentsMap,
@@ -404,7 +409,7 @@ typealias Handler<T> = (T) -> Unit
 
 data class CallbackInfo<in T : Event>(val async: Boolean, val cb: Handler<T>)
 
-abstract class PrimitiveProps : Props() {
+abstract class HostProps : Props() {
     val constructorParameters = mutableMapOf<String, Any?>()
 
     val componentsMap = mutableMapOf<String, NElement<*>?>()
@@ -462,8 +467,8 @@ interface Reference {
     val referer: Instance?
 }
 
-data class ListReference(override val referer: PrimitiveInstance, val attr: String, val index: Int) : Reference
-data class AttrReference(override val referer: PrimitiveInstance, val attr: String) : Reference
+data class ListReference(override val referer: HostInstance, val attr: String, val index: Int) : Reference
+data class AttrReference(override val referer: HostInstance, val attr: String) : Reference
 data class UserReference(override val referer: UserInstance) : Reference
 
 abstract class Instance(var element: NElement<*>,
@@ -479,13 +484,13 @@ class UserInstance(element: NElement<*>,
                    var byKeys: Map<Any, Instance> = mutableMapOf(),
                    var subst: Instance?) : Instance(element, node, backrefs, env)
 
-class PrimitiveInstance(element: NElement<*>,
-                        node: Int,
-                        backrefs: MutableSet<Reference>,
-                        env: Env,
-                        var childrenProps: Map<String, List<Instance>>,
-                        var componentProps: Map<String, Instance?>,
-                        var valueProps: Map<String, *>) : Instance(element, node, backrefs, env)
+class HostInstance(element: NElement<*>,
+                   node: Int,
+                   backrefs: MutableSet<Reference>,
+                   env: Env,
+                   var childrenProps: Map<String, List<Instance>>,
+                   var componentProps: Map<String, Instance?>,
+                   var valueProps: Map<String, *>) : Instance(element, node, backrefs, env)
 
 
 fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>): Pair<List<Update.Remove>, List<Update.Add>> {

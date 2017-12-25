@@ -2,13 +2,13 @@ package noria.views
 
 import org.jetbrains.noria.Event
 import org.jetbrains.noria.NElement
-import org.jetbrains.noria.PrimitiveProps
+import org.jetbrains.noria.HostProps
 
 class DomEvent : Event() {
 
 }
 
-open class DomProps : PrimitiveProps() {
+open class DomProps : HostProps() {
     var style: String by value()
     var children : MutableList<NElement<*>> by elementList()
 

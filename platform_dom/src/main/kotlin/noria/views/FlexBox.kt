@@ -1,15 +1,12 @@
 package noria.views
 
-import org.jetbrains.noria.BoxProps
-import org.jetbrains.noria.Container
-import org.jetbrains.noria.NElement
-import org.jetbrains.noria.RenderContext
-import org.jetbrains.noria.with
+import org.jetbrains.noria.*
 
+val Div = HostComponentType<DomProps>("div")
 
 class FlexBox : Container<BoxProps>() {
     override fun RenderContext.render(): NElement<*> {
-        return "div" with DomProps().apply {
+        return Div with DomProps().apply {
             style = buildString {
                 append("display:flex;")
                 append("flex-direction:${props.flexDirection};")
