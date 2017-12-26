@@ -202,7 +202,7 @@ class UpdatesTest {
         val updates1 = d.updates()
         assertEquals(listOf(
                 Update.DestroyNode(node = 2),
-                Update.MakeNode(node = 3, type = "span", parameters = emptyMap()),
+                Update.MakeNode(node = 3, type = "span", parameters = fastStringMap()),
                 Update.SetCallback(node = 3, attr = "click", async = true),
                 Update.Remove(node = 1, attr = "children", value = 2),
                 Update.Add(node = 1, attr = "children", value = 3, index = 0)), updates1)
@@ -261,16 +261,16 @@ class UpdatesTest {
                 ::HO with HOProps(
                         x = Foo with TestProps1(),
                         y = Bar with TestProps1()) to listOf(
-                        Update.MakeNode(node = 0, type = "foo", parameters = emptyMap()),
-                        Update.MakeNode(node = 1, type = "bar", parameters = emptyMap()),
-                        Update.MakeNode(node = 2, type = "div", parameters = emptyMap()),
+                        Update.MakeNode(node = 0, type = "foo", parameters = fastStringMap()),
+                        Update.MakeNode(node = 1, type = "bar", parameters = fastStringMap()),
+                        Update.MakeNode(node = 2, type = "div", parameters = fastStringMap()),
                         Update.Add(node = 2, attr = "children", value = 0, index = 0),
                         Update.Add(node = 2, attr = "children", value = 1, index = 1)
                 ),
                 ::HO with HOProps(
                         x = Foo with TestProps1(),
                         y = Baz with TestProps1()) to listOf(
-                        Update.MakeNode(node = 3, type = "baz", parameters = emptyMap()),
+                        Update.MakeNode(node = 3, type = "baz", parameters = fastStringMap()),
                         Update.Remove(node = 2, attr = "children", value = 1),
                         Update.Add(node = 2, attr = "children", value = 3, index = 1),
                         Update.DestroyNode(node = 1)
@@ -279,8 +279,8 @@ class UpdatesTest {
                         x = Fizz with TestProps1(),
                         y = Fuzz with TestProps1()) to
                         listOf(
-                                Update.MakeNode(node = 4, type = "fizz", parameters = emptyMap()),
-                                Update.MakeNode(node = 5, type = "fuzz", parameters = emptyMap()),
+                                Update.MakeNode(node = 4, type = "fizz", parameters = fastStringMap()),
+                                Update.MakeNode(node = 5, type = "fuzz", parameters = fastStringMap()),
                                 Update.Remove(node = 2, attr = "children", value = 0),
                                 Update.Remove(node = 2, attr = "children", value = 3),
                                 Update.Add(node = 2, attr = "children", value = 4, index = 0),
@@ -300,9 +300,9 @@ class UpdatesTest {
                         Update.Remove(node = 0, attr = "children", value = 3),
                         Update.DestroyNode(node = 3)),
                 ::SimpleContainer with SimpleContainerProps(x = 3) to listOf(
-                        Update.MakeNode(node = 4, type = "textnode", parameters = emptyMap()),
+                        Update.MakeNode(node = 4, type = "textnode", parameters = fastStringMap()),
                         Update.SetAttr(node = 4, attr = "text", value = "2"),
-                        Update.MakeNode(node = 5, type = "textnode", parameters = emptyMap()),
+                        Update.MakeNode(node = 5, type = "textnode", parameters = fastStringMap()),
                         Update.SetAttr(node = 5, attr = "text", value = "3"),
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),
                         Update.Add(node = 0, attr = "children", value = 5, index = 3)
@@ -326,9 +326,9 @@ class UpdatesTest {
         }
         checkUpdates(listOf(
                 e0 to listOf(
-                        Update.MakeNode(node = 0, type = "div", parameters = emptyMap()),
-                        Update.MakeNode(node = 1, type = "hey", parameters = emptyMap()),
-                        Update.MakeNode(node = 2, type = "hoy", parameters = emptyMap()),
+                        Update.MakeNode(node = 0, type = "div", parameters = fastStringMap()),
+                        Update.MakeNode(node = 1, type = "hey", parameters = fastStringMap()),
+                        Update.MakeNode(node = 2, type = "hoy", parameters = fastStringMap()),
                         Update.Add(node = 0, attr = "children", value = 1, index = 0),
                         Update.Add(node = 0, attr = "children", value = 2, index = 1)),
                 e0 to emptyList(),
@@ -337,8 +337,8 @@ class UpdatesTest {
                     children.add(hoy with TestProps1().apply { key = "hoy" })
                     children.add(fu with TestProps1().apply { key = "fu" })
                 } to listOf(
-                        Update.MakeNode(node = 3, type = "hiy", parameters = emptyMap()),
-                        Update.MakeNode(node = 4, type = "fu", parameters = emptyMap()),
+                        Update.MakeNode(node = 3, type = "hiy", parameters = fastStringMap()),
+                        Update.MakeNode(node = 4, type = "fu", parameters = fastStringMap()),
                         Update.Remove(node = 0, attr = "children", value = 1),
                         Update.Add(node = 0, attr = "children", value = 3, index = 0),
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),

@@ -50,7 +50,7 @@ sealed class NElement<T : Props>(val props: T, open val type: Any) {
 }
 
 sealed class Update {
-    data class MakeNode(val node: Int, val type: String, val parameters: Map<String, Any?>) : Update()
+    data class MakeNode(val node: Int, val type: String, val parameters: MutableMapLike<String, Any?>) : Update()
     data class SetAttr(val node: Int, val attr: String, val value: Any?) : Update()
     data class SetCallback(val node: Int, val attr: String, val async: Boolean) : Update()
     data class RemoveCallback(val node: Int, val attr: String) : Update()
@@ -239,13 +239,13 @@ class ReconciliationState(val graph: GraphState) {
                 }
             }
             is HostInstance -> {
-                c.componentProps.forEach { (attr, comp) ->
+                c.componentProps.forEach { attr, comp ->
                     comp?.backrefs?.remove(AttrReference(c, attr))
                     if (comp?.backrefs?.isEmpty() == true) {
                         gc(comp)
                     }
                 }
-                c.childrenProps.forEach { (attr, children) ->
+                c.childrenProps.forEach { attr, children ->
                     for (i in children.indices) {
                         val child = children[i]
                         child.backrefs.remove(ListReference(c, attr, i))
@@ -269,7 +269,7 @@ class ReconciliationState(val graph: GraphState) {
             supply(Update.MakeNode(node, (e.type as HostComponentType<*>).type, e.props.constructorParameters))
         }
 
-        val childrenMap = mutableMapOf<String, List<Instance>>()
+        val childrenMap = fastStringMap<List<Instance>>()
         val oldChildrenMap = hostInstance?.childrenProps
         val childrenKeySet = e.props.childrenMap.keys.union(oldChildrenMap?.keys ?: emptySet())
         for (attr in childrenKeySet) {
@@ -280,7 +280,7 @@ class ReconciliationState(val graph: GraphState) {
             childrenMap[attr] = reconcileList(node, attr, oldChildren, newChildrenNotNull, env)
         }
 
-        val componentsMap = mutableMapOf<String, Instance?>()
+        val componentsMap = fastStringMap<Instance?>()
         val oldComponentsMap = hostInstance?.componentProps
         val componentKeySet = e.props.componentsMap.keys.union(oldComponentsMap?.keys ?: emptySet())
         for (attr in componentKeySet) {
@@ -293,7 +293,7 @@ class ReconciliationState(val graph: GraphState) {
             }
         }
 
-        val valuesMap = mutableMapOf<String, Any?>()
+        val valuesMap = fastStringMap<Any?>()
         val valuesKeySet = e.props.valuesMap.keys.union(hostInstance?.valueProps?.keys ?: emptySet())
         for (attr in valuesKeySet) {
             val value = e.props.valuesMap[attr]
@@ -420,9 +420,9 @@ typealias Handler<T> = (T) -> Unit
 data class CallbackInfo<in T : Event>(val async: Boolean, val cb: Handler<T>)
 
 abstract class HostProps : Props() {
-    val constructorParameters = mutableMapOf<String, Any?>()
+    val constructorParameters = fastStringMap<Any?>()
 
-    val componentsMap = mutableMapOf<String, NElement<*>?>()
+    val componentsMap = fastStringMap<NElement<*>?>()
     fun <T : NElement<*>> element(constructor: Boolean = false): ReadWriteProperty<Any, T> =
             object : ReadWriteProperty<Any, T> {
                 override fun getValue(thisRef: Any, property: KProperty<*>): T =
@@ -436,7 +436,7 @@ abstract class HostProps : Props() {
                 }
             }
 
-    val valuesMap = mutableMapOf<String, Any?>()
+    val valuesMap = fastStringMap<Any?>()
     fun <T> value(constructor: Boolean = false): ReadWriteProperty<Any, T> =
             object : ReadWriteProperty<Any, T> {
                 override fun getValue(thisRef: Any, property: KProperty<*>): T =
@@ -450,18 +450,22 @@ abstract class HostProps : Props() {
                 }
             }
 
-    val childrenMap = mutableMapOf<String, List<NElement<*>?>>()
+    val childrenMap = fastStringMap<List<NElement<*>?>>()
     fun <T : List<NElement<*>>> elementList(): ReadWriteProperty<Any, T> =
             object : ReadWriteProperty<Any, T> {
-                override fun getValue(thisRef: Any, property: KProperty<*>): T =
-                        childrenMap.getOrPut(property.name, { mutableListOf() }) as T
+                override fun getValue(thisRef: Any, property: KProperty<*>): T {
+                    if (!childrenMap.containsKey(property.name)) {
+                        childrenMap[property.name] = mutableListOf()
+                    }
+                    return childrenMap[property.name] as T
+                }
 
                 override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
                     childrenMap[property.name] = value
                 }
             }
 
-    val callbacks = mutableMapOf<String, CallbackInfo<*>>()
+    val callbacks = fastStringMap<CallbackInfo<*>>()
     fun <T : Event> handler(): ReadWriteProperty<Any, CallbackInfo<T>> =
             object : ReadWriteProperty<Any, CallbackInfo<T>> {
                 override fun getValue(thisRef: Any, property: KProperty<*>): CallbackInfo<T> =
@@ -498,9 +502,9 @@ class HostInstance(element: NElement<*>,
                    node: Int,
                    backrefs: MutableSet<Reference>,
                    env: Env,
-                   var childrenProps: Map<String, List<Instance>>,
-                   var componentProps: Map<String, Instance?>,
-                   var valueProps: Map<String, *>) : Instance(element, node, backrefs, env)
+                   var childrenProps: MutableMapLike<String, List<Instance>>,
+                   var componentProps: MutableMapLike<String, Instance?>,
+                   var valueProps: MutableMapLike<String, *>) : Instance(element, node, backrefs, env)
 
 
 fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>): Pair<List<Update.Remove>, List<Update.Add>> {

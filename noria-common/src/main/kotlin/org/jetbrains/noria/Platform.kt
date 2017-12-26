@@ -17,3 +17,19 @@ val vboxCT = PlatformComponentType<BoxProps>()
 val labelCT = PlatformComponentType<LabelProps>()
 val buttonCT = PlatformComponentType<ButtonProps>()
 
+interface MutableMapLike<K : Any, V> {
+    operator fun get(key: K): V?
+    fun put(key: K, v: V)
+    operator fun set(key: K, v: V)
+    fun remove(key: K)
+    fun containsKey(key: K): Boolean
+    fun forEach(handler: (K, V) -> Unit)
+    fun size(): Int
+}
+
+expect fun <V> fastStringMap(): MutableMapLike<String, V>
+expect fun <V> fastIntMap(): MutableMapLike<Int, V>
+
+val <K: Any> MutableMapLike<K, *>.keys : Set<K> get() = mutableSetOf<K>().apply {
+    forEach { k, _ -> add(k) }
+}
