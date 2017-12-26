@@ -9,8 +9,8 @@ class TextNodeProps : HostProps() {
 val textNodeCT = HostComponentType<TextNodeProps>("textnode")
 
 class Label : View<LabelProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        return textNodeCT with TextNodeProps().apply {
+    override fun RenderContext.render() {
+        textNodeCT with TextNodeProps().apply {
             text = props.text
         }
     }

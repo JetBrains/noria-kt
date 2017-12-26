@@ -6,12 +6,12 @@ fun RenderContext.testNodes() : NElement<*> {
 //    "div" with LinkProps("")
 
     return vbox {
-        +vbox {
+        vbox {
             alignItems = Align.center
             
-            +vbox {
-                +hbox {  }
-                +hbox {  }
+            vbox {
+                hbox {  }
+                hbox {  }
             }
         }
     }

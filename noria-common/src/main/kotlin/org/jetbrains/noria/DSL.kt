@@ -1,14 +1,15 @@
 package org.jetbrains.noria
 
-open class ContainerProps(val children: MutableList<NElement<*>> = mutableListOf()) : Props() {
-    operator fun NElement<*>.unaryPlus() {
-        children += this
+open class ContainerProps(val children: MutableList<NElement<*>> = mutableListOf()) : Props(), RenderContext {
+    override fun <T : Props> reify(e: NElement<T>): NElement<T> {
+        error("Should only be called on top-level in render function")
+    }
+
+    override fun <T : Props> emit(e: NElement<T>): NElement<T> {
+        children += e
+        return e
     }
 }
 
 abstract class Container<T: ContainerProps> : View<T>()
 
-infix fun <T: Props> Render<T>.with(props: T) : NElement<T> = NElement.Fun(this, props)
-infix fun <T: Props> Constructor<T>.with(props: T) : NElement<T> = NElement.Class(this, props)
-infix fun <T: HostProps> HostComponentType<T>.with(props: T) : NElement<T> = NElement.HostElement(this, props)
-infix fun <T: Props> PlatformComponentType<T>.with(props: T) : NElement<T> = NElement.PlatformDispatch(this, props)

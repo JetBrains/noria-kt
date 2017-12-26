@@ -1,7 +1,6 @@
 package noria
 
 import org.jetbrains.noria.JustifyContent
-import org.jetbrains.noria.NElement
 import org.jetbrains.noria.Props
 import org.jetbrains.noria.GraphState
 import org.jetbrains.noria.RenderContext
@@ -10,41 +9,40 @@ import org.jetbrains.noria.button
 import org.jetbrains.noria.hbox
 import org.jetbrains.noria.label
 import org.jetbrains.noria.vbox
-import org.jetbrains.noria.with
 import kotlin.browser.document
 
 object AppProps : Props()
 class AppComponent : View<AppProps>() {
     var counter: Int = 10
 
-    override fun RenderContext.render(): NElement<*> {
-        return vbox {
-            +hbox {
+    override fun RenderContext.render() {
+        vbox {
+            hbox {
                 justifyContent = JustifyContent.center
 
-                +button("More") {
+                button("More") {
                     counter++
                     forceUpdate()
                 }
 
-                +button("Less") {
+                button("Less") {
                     counter--
                     forceUpdate()
                 }
 
-                +button("This one you won't click", true) {
+                button("This one you won't click", true) {
                     
                 }
             }
 
-            +hbox {
+            hbox {
                 justifyContent = JustifyContent.center
-                +label("Counter = ${counter}")
+                label("Counter = ${counter}")
             }
 
             repeat(counter) { n ->
-                +hbox {
-                    +label("Item #${(n + 1).toString().padStart(2)}")
+                hbox {
+                    label("Item #${(n + 1).toString().padStart(2)}")
                 }
             }
         }
@@ -61,5 +59,7 @@ fun main(args: Array<String>) {
     driver.registerRoot("app", document.getElementById("app") ?: error("There should be an 'app' element in DOM"))
     c = GraphState(DOMPlatform, driver)
 
-    c.mount("app", ::AppComponent with AppProps)
+    c.mount("app") {
+        ::AppComponent with AppProps
+    }
 }

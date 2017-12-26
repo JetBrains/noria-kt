@@ -25,23 +25,23 @@ val NSLayoutConstraint = HostComponentType<NSConstraint>("NSLayoutConstraint")
 
 data class MyProps(val x: Int = 0) : Props()
 class MyMacComponent : View<MyProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        val v1 = reify(NSView with NSViewProps().apply {
+    override fun RenderContext.render() {
+        val v1 = capture {NSView with NSViewProps().apply {
             subviews.add(NSView with NSViewProps())
-        })
-        val v2 = reify(NSView with NSViewProps().apply {
+        }} as NElement<NSViewProps>
+        val v2 = capture { NSView with NSViewProps().apply {
             subviews.add(NSView with NSViewProps())
             onClick = CallbackInfo(true) { event ->
                 println("hello")
             }
-        })
+        }} as NElement<NSViewProps>
 
-        reify(NSLayoutConstraint with NSConstraint().apply {
+        capture {NSLayoutConstraint with NSConstraint().apply {
             view1 = v1
             view2 = v2
-        })
+        }}
 
-        return NSView with NSViewProps().apply {
+        NSView with NSViewProps().apply {
             subviews.add(v1)
             if (props.x > 0) {
                 subviews.add(v2)
@@ -57,8 +57,8 @@ class TestProps1 : HostProps() {
 
 data class LabelProps(val text: String) : Props()
 class Label : View<LabelProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        return textNodeCT with noria.views.TextNodeProps().apply { text = props.text }
+    override fun RenderContext.render() {
+        textNodeCT with noria.views.TextNodeProps().apply { text = props.text }
     }
 }
 
@@ -68,11 +68,11 @@ val Pre = HostComponentType<DomProps>("pre")
 
 data class SimpleContainerProps(val x: Int) : Props()
 class SimpleContainer : View<SimpleContainerProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        return Div with DomProps().apply {
-            (0..props.x).mapTo(children) {
-                ::Label with LabelProps("$it").apply {
-                    key = it.toString()
+    override fun RenderContext.render() {
+        Div with DomProps().apply {
+            for (c in (0..props.x)) {
+                ::Label with LabelProps("$c").apply {
+                    key = c.toString()
                 }
             }
         }
@@ -83,10 +83,10 @@ data class SplitProps(val left: NElement<*>,
                       val right: NElement<*>) : Props()
 
 class SplitView : View<SplitProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        return Div with DomProps().apply {
-            children.add(props.left)
-            children.add(props.right)
+    override fun RenderContext.render() {
+        Div with DomProps().apply {
+            emit(props.left)
+            emit(props.right)
         }
     }
 }
@@ -95,32 +95,33 @@ data class HOProps(val x: NElement<*>,
                    val y: NElement<*>) : Props()
 
 class HO : View<HOProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        val x1 = reify(props.x)
-        val y1 = reify(props.y)
-        return ::SplitView with (SplitProps(left = x1, right = y1))
+    override fun RenderContext.render() {
+        val x1 = capture {  emit(props.x) }
+        val y1 = capture { emit(props.y) }
+
+        ::SplitView with (SplitProps(left = x1, right = y1))
     }
 }
 
 data class AppProps(val counter: Int, val h: (Int) -> Unit) : Props()
 class AppComponent : View<AppProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        return vbox {
-            +hbox {
+    override fun RenderContext.render() {
+        vbox {
+            hbox {
                 justifyContent = JustifyContent.center
 
-                +button("Click Me Once") {
+                button("Click Me Once") {
                     props.h(props.counter + 1)
                 }
 
-                +button("Click Me Twice") {
+                button("Click Me Twice") {
                     props.h(props.counter + 1)
                 }
             }
 
             repeat(props.counter) { n ->
-                +hbox {
-                    +label("$n")
+                hbox {
+                    label("$n")
                 }
             }
         }
@@ -145,11 +146,11 @@ class CapturingDriver : PlatformDriver {
 
 data class WrapperProps(val w: NElement<*>?) : Props()
 class Wrapper : View<WrapperProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        return Div with DomProps().apply {
+    override fun RenderContext.render() {
+        Div with DomProps().apply {
             val w = props.w
             if (w != null) {
-                children.add(w)
+                emit(w)
             }
         }
     }
@@ -157,18 +158,18 @@ class Wrapper : View<WrapperProps>() {
 
 data class ReifiesProps(val i: Int) : Props()
 class Reifies : View<ReifiesProps>() {
-    override fun RenderContext.render(): NElement<*> {
-        val e = reify(label("some text"))
-        return Div with DomProps().apply {
+    override fun RenderContext.render() {
+        val e = capture {label("some text")}
+        Div with DomProps().apply {
             if (props.i == 0) {
-                children.add(::Wrapper with WrapperProps(e))
+                ::Wrapper with WrapperProps(e)
             } else {
-                children.add(::Wrapper with WrapperProps(null))
+                ::Wrapper with WrapperProps(null)
             }
             if (props.i == 1) {
-                children.add(::Wrapper with WrapperProps(e))
+                ::Wrapper with WrapperProps(e)
             } else {
-                children.add(::Wrapper with WrapperProps(null))
+                ::Wrapper with WrapperProps(null)
             }
         }
     }
@@ -176,8 +177,8 @@ class Reifies : View<ReifiesProps>() {
 
 class RenderCounter : View<Props>() {
     var counter = 0
-    override fun RenderContext.render(): NElement<*> {
-        return (if (counter % 2 == 0) Div else Span) with DomProps().apply {
+    override fun RenderContext.render() {
+        (if (counter % 2 == 0) Div else Span) with DomProps().apply {
             click = CallbackInfo(true) {
                 counter++
                 forceUpdate()
@@ -193,9 +194,12 @@ class UpdatesTest {
     fun `test force update`() {
         val d = CapturingDriver()
         val c = GraphState(DOMPlatform, d)
-        c.mount("root", Div with DomProps().apply {
-            children.add(::RenderCounter with Props())
-        })
+        c.mount("root") {
+            Div with DomProps().apply {
+                ::RenderCounter with Props()
+            }
+        }
+
         val updates0 = d.updates()
         c.handleEvent(EventInfo(2, "click", DomEvent()))
         val updates1 = d.updates()
@@ -223,6 +227,11 @@ class UpdatesTest {
         return lastUpdates
     }
 
+    infix fun <T: Props> Render<T>.with(props: T): NElement<T> = NElement.Fun(this, props)
+    infix fun <T: Props> Constructor<T>.with(props: T) : NElement<T> = NElement.Class(this, props)
+    infix fun <T: HostProps> HostComponentType<T>.with(props: T) : NElement<T> = NElement.HostElement(this, props)
+    infix fun <T: Props> PlatformComponentType<T>.with(props: T) : NElement<T> = NElement.PlatformDispatch(this, props)
+
     @Test
     fun `test reify`() {
         checkUpdates(listOf(
@@ -237,9 +246,9 @@ class UpdatesTest {
     fun `recursive destroy`() {
         checkUpdates(listOf(
                 Div with DomProps().apply {
-                    children.add(Span with DomProps().apply {
-                        children.add(Pre with DomProps())
-                    })
+                    Span with DomProps().apply {
+                        Pre with DomProps()
+                    }
                 } to null,
                 Div with DomProps() to listOf(
                         Update.Remove(node = 0, attr = "children", value = 1),
@@ -320,8 +329,8 @@ class UpdatesTest {
         val fu = HostComponentType<TestProps1>("fu")
 
         val e0 = Div with DomProps().apply {
-            children.add(hey with TestProps1().apply { key = "hey" })
-            children.add(hoy with TestProps1().apply { key = "hoy" })
+            hey with TestProps1().apply { key = "hey" }
+            hoy with TestProps1().apply { key = "hoy" }
         }
         checkUpdates(listOf(
                 e0 to listOf(
@@ -332,9 +341,9 @@ class UpdatesTest {
                         Update.Add(node = 0, attr = "children", value = 2, index = 1)),
                 e0 to emptyList(),
                 Div with DomProps().apply {
-                    children.add(hiy with TestProps1().apply { key = "hiy" })
-                    children.add(hoy with TestProps1().apply { key = "hoy" })
-                    children.add(fu with TestProps1().apply { key = "fu" })
+                    hiy with TestProps1().apply { key = "hiy" }
+                    hoy with TestProps1().apply { key = "hoy" }
+                    fu with TestProps1().apply { key = "fu" }
                 } to listOf(
                         Update.MakeNode(node = 3, type = "hiy", parameters = fastStringMap()),
                         Update.MakeNode(node = 4, type = "fu", parameters = fastStringMap()),
@@ -343,9 +352,9 @@ class UpdatesTest {
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),
                         Update.DestroyNode(node = 1)),
                 Div with DomProps().apply {
-                    children.add(hoy with TestProps1().apply { key = "hoy" })
-                    children.add(hiy with TestProps1().apply { key = "hiy" })
-                    children.add(fu with TestProps1().apply { key = "fu" })
+                    hoy with TestProps1().apply { key = "hoy" }
+                    hiy with TestProps1().apply { key = "hiy" }
+                    fu with TestProps1().apply { key = "fu" }
                 } to listOf(
                         Update.Remove(node = 0, attr = "children", value = 2),
                         Update.Add(node = 0, attr = "children", value = 2, index = 0))))
@@ -355,37 +364,37 @@ class UpdatesTest {
     fun `reuse with same type`() {
         checkUpdates(listOf(
                 Div with DomProps().apply {
-                    children.add(textNodeCT with TextNodeProps().apply {
+                    textNodeCT with TextNodeProps().apply {
                         key = "1"
                         text = "1"
-                    })
-                    children.add(textNodeCT with TextNodeProps().apply {
+                    }
+                    textNodeCT with TextNodeProps().apply {
                         key = "2"
                         text = "2"
-                    })
+                    }
                 } to null,
                 Div with DomProps().apply {
-                    children.add(textNodeCT with TextNodeProps().apply {
+                    textNodeCT with TextNodeProps().apply {
                         key = "3"
                         text = "3"
-                    })
-                    children.add(textNodeCT with TextNodeProps().apply {
+                    }
+                    textNodeCT with TextNodeProps().apply {
                         key = "1"
                         text = "1"
-                    })
+                    }
                 } to listOf(
                         Update.SetAttr(node = 2, attr = "text", value = "3"),
                         Update.Remove(node = 0, attr = "children", value = 2),
                         Update.Add(node = 0, attr = "children", value = 2, index = 0)),
                 Div with DomProps().apply {
-                    children.add(textNodeCT with TextNodeProps().apply {
+                    textNodeCT with TextNodeProps().apply {
                         key = "1"
                         text = "1"
-                    })
-                    children.add(textNodeCT with TextNodeProps().apply {
+                    }
+                    textNodeCT with TextNodeProps().apply {
                         key = "4"
                         text = "4"
-                    })
+                    }
                 } to listOf(
                         Update.SetAttr(node = 2, attr = "text", value = "4"),
                         Update.Remove(node = 0, attr = "children", value = 1),
