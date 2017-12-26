@@ -123,13 +123,13 @@ class ReconciliationState(val graph: GraphState) {
             newKeysSet[e.props.key!!] = e.props.key!!
         }
 
-        val reusableGarbageByType = mutableMapOf<Any, MutableList<Instance>>()
+        val reusableGarbageByType = fastStringMap<MutableList<Instance>>()
         byKeys.forEach { _, v ->
             if (!newKeysSet.containsKey(v.element.props.key!!) && v.backrefs.size == 1) {
-                var list = reusableGarbageByType[v.element.type]
+                var list = reusableGarbageByType[v.element.type.toString()]
                 if (list == null) {
                     list = mutableListOf()
-                    reusableGarbageByType[v.element.type] = list
+                    reusableGarbageByType[v.element.type.toString()] = list
                 }
                 list.add(v)
             }
@@ -138,7 +138,7 @@ class ReconciliationState(val graph: GraphState) {
         return coll.mapNotNull {
             var target: Instance? = byKeys[it.props.key!!]
             if (target == null) {
-                val g = reusableGarbageByType[it.type]
+                val g = reusableGarbageByType[it.type.toString()]
                 if (g != null && !g.isEmpty()) {
                     target = g.last()
                     g.removeAt(g.size - 1)
