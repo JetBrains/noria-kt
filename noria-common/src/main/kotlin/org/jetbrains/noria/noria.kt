@@ -6,7 +6,7 @@ import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
 open class Props {
-    var key: Any? = null
+    var key: String? = null
 }
 
 interface RenderContext {
@@ -37,9 +37,9 @@ abstract class View<T : Props> {
 typealias Render<T> = (T) -> NElement<*>
 typealias Constructor<T> = () -> View<T>
 
-interface ComponentType<T: Props>
-data class HostComponentType<T: HostProps>(val type: String) : ComponentType<T>
-class PlatformComponentType<T: Props>: ComponentType<T>
+interface ComponentType<T : Props>
+data class HostComponentType<T : HostProps>(val type: String) : ComponentType<T>
+class PlatformComponentType<T : Props> : ComponentType<T>
 
 sealed class NElement<T : Props>(val props: T, open val type: Any) {
     internal class Fun<T : Props>(override val type: Render<T>, props: T) : NElement<T>(props, type)
@@ -117,16 +117,26 @@ class ReconciliationState(val graph: GraphState) {
                 else -> throw IllegalArgumentException("don't know how to reconcile $e")
             }
 
-    private fun reconcileByKeys(byKeys: Map<Any, Instance>, coll: Collection<NElement<*>>, env: Env): List<Instance> {
-        val newKeysSet = hashSetOf<Any>()
-        coll.mapTo(newKeysSet) { it.props.key!! }
+    private fun reconcileByKeys(byKeys: MutableMapLike<String, Instance>, coll: Collection<NElement<*>>, env: Env): List<Instance> {
+        val newKeysSet = fastStringMap<String>()
+        for (e in coll) {
+            newKeysSet[e.props.key!!] = e.props.key!!
+        }
+
         val reusableGarbageByType = mutableMapOf<Any, MutableList<Instance>>()
-        byKeys.values
-                .filter { it.element.props.key !in newKeysSet }
-                .filter { it.backrefs.size == 1 }
-                .groupByTo(reusableGarbageByType) { it.element.type }
+        byKeys.forEach { _, v ->
+            if (!newKeysSet.containsKey(v.element.props.key!!) && v.backrefs.size == 1) {
+                var list = reusableGarbageByType[v.element.type]
+                if (list == null) {
+                    list = mutableListOf()
+                    reusableGarbageByType[v.element.type] = list
+                }
+                list.add(v)
+            }
+        }
+
         return coll.mapNotNull {
-            var target: Instance? = byKeys[it.props.key]
+            var target: Instance? = byKeys[it.props.key!!]
             if (target == null) {
                 val g = reusableGarbageByType[it.type]
                 if (g != null && !g.isEmpty()) {
@@ -139,12 +149,19 @@ class ReconciliationState(val graph: GraphState) {
     }
 
     private fun assignKeys(elements: List<NElement<*>>) {
-        val indices = mutableMapOf<Any, Int>()
+        val indices = fastStringMap<Int>()
         for (element in elements) {
             if (element.props.key == null) {
-                val index = indices.getOrPut(element.type, { 0 })
-                element.props.key = element.type to index
-                indices[element.type] = index + 1
+                val typeStr = element.type.toString()
+                val i = indices[typeStr]
+                val index = if (i == null) {
+                    indices[typeStr] = 0
+                    0
+                } else {
+                    i
+                }
+                element.props.key = (element.type to index).toString()
+                indices[typeStr] = index + 1
             }
         }
     }
@@ -186,13 +203,17 @@ class ReconciliationState(val graph: GraphState) {
             }
         }
         assignKeys(renderContext.createdElements)
-        val oldByKeys = userComponent?.byKeys ?: emptyMap()
+        val oldByKeys = userComponent?.byKeys ?: fastStringMap()
         val newComponents = reconcileByKeys(oldByKeys, renderContext.createdElements.map { it.e }, env)
         val newEnv = Env(env, renderContext.createdElements.zip(newComponents) { reified, instance ->
             reified.id to instance
         }.toMap())
         val newSubst = reconcileImpl(userComponent?.subst, substElement, newEnv)
-        val newByKeys = newComponents.associateBy { it.element.props.key!! }
+        val newByKeys = fastStringMap<Instance>()
+        for (c in newComponents) {
+            newByKeys[c.element.props.key!!] = c
+        }
+
         val result = userComponent?.apply {
             this.element = e
             this.node = newSubst?.node
@@ -210,15 +231,15 @@ class ReconciliationState(val graph: GraphState) {
                 env = env)
         view?.context = graph
         view?.instance = result
-        val oldComponents = oldByKeys.values
+
         val reference = UserReference(result)
-        for (c in oldComponents) {
+        oldByKeys.forEach { _, c ->
             c.backrefs.remove(reference)
         }
-        for (c in newComponents) {
+        newByKeys.forEach { _, c ->
             c.backrefs.add(reference)
         }
-        for (c in oldComponents) {
+        oldByKeys.forEach { _, c ->
             if (c.backrefs.isEmpty()) {
                 gc(c)
             }
@@ -232,10 +253,10 @@ class ReconciliationState(val graph: GraphState) {
             supply(Update.DestroyNode(node))
         }
         when (c) {
-            is UserInstance -> c.byKeys.values.forEach {
-                it.backrefs.remove(UserReference(c))
-                if (it.backrefs.isEmpty()) {
-                    gc(it)
+            is UserInstance -> c.byKeys.forEach { _, instance ->
+                instance.backrefs.remove(UserReference(c))
+                if (instance.backrefs.isEmpty()) {
+                    gc(instance)
                 }
             }
             is HostInstance -> {
@@ -271,8 +292,8 @@ class ReconciliationState(val graph: GraphState) {
 
         val childrenMap = fastStringMap<List<Instance>>()
         val oldChildrenMap = hostInstance?.childrenProps
-        val childrenKeySet = e.props.childrenMap.keys.union(oldChildrenMap?.keys ?: emptySet())
-        for (attr in childrenKeySet) {
+        val newChildrenMap = e.props.childrenMap
+        forEachKey(newChildrenMap, oldChildrenMap) { attr ->
             val newChildren = e.props.childrenMap[attr]
             val newChildrenNotNull = newChildren?.filterNotNull() ?: emptyList()
             assignKeys(newChildrenNotNull)
@@ -282,8 +303,8 @@ class ReconciliationState(val graph: GraphState) {
 
         val componentsMap = fastStringMap<Instance?>()
         val oldComponentsMap = hostInstance?.componentProps
-        val componentKeySet = e.props.componentsMap.keys.union(oldComponentsMap?.keys ?: emptySet())
-        for (attr in componentKeySet) {
+        val newComponentsMap = e.props.componentsMap
+        forEachKey(newComponentsMap, oldComponentsMap) { attr ->
             val element = e.props.componentsMap[attr]
             val oldComponent = oldComponentsMap?.get(attr)
             val newComponent = reconcileImpl(oldComponent, element, env)
@@ -294,20 +315,21 @@ class ReconciliationState(val graph: GraphState) {
         }
 
         val valuesMap = fastStringMap<Any?>()
-        val valuesKeySet = e.props.valuesMap.keys.union(hostInstance?.valueProps?.keys ?: emptySet())
-        for (attr in valuesKeySet) {
+        val oldValuesMap = hostInstance?.valueProps
+        val newValuesMap = e.props.valuesMap
+        forEachKey(newValuesMap, oldValuesMap) { attr ->
             val value = e.props.valuesMap[attr]
             valuesMap[attr] = value
-            val oldValue = hostInstance?.valueProps?.get(attr)
+            val oldValue = oldValuesMap?.get(attr)
             if (value != oldValue) {
                 supply(Update.SetAttr(node, attr, value))
             }
         }
 
-        val callbacks = graph.callbacksTable[node] ?: mutableMapOf()
-        val callbacksKeySet = e.props.callbacks.keys.union(callbacks.keys)
-        for (attr in callbacksKeySet) {
-            val oldCB = callbacks[attr]
+        val oldCallbacks = graph.callbacksTable[node] ?: fastStringMap()
+        val newCallbacks = e.props.callbacks
+        forEachKey(oldCallbacks, newCallbacks) { attr ->
+            val oldCB = oldCallbacks[attr]
             val newCB = e.props.callbacks[attr]
             if (oldCB == null && newCB != null) {
                 supply(Update.SetCallback(node, attr, newCB.async))
@@ -315,12 +337,12 @@ class ReconciliationState(val graph: GraphState) {
                 supply(Update.RemoveCallback(node, attr))
             }
             if (newCB != null) {
-                callbacks[attr] = newCB
+                oldCallbacks[attr] = newCB
             } else {
-                callbacks.remove(attr)
+                oldCallbacks.remove(attr)
             }
         }
-        graph.callbacksTable[node] = callbacks
+        graph.callbacksTable[node] = oldCallbacks
         val result = hostInstance?.apply {
             this.element = e
             this.childrenProps = childrenMap
@@ -337,7 +359,7 @@ class ReconciliationState(val graph: GraphState) {
                 backrefs = hashSetOf(),
                 env = env)
 
-        for (attr in childrenKeySet) {
+        forEachKey(oldChildrenMap, newChildrenMap) { attr ->
             val newChildren = childrenMap[attr] ?: emptyList()
             val oldChildren = oldChildrenMap?.get(attr) ?: emptyList()
             for ((index, c) in oldChildren.withIndex()) {
@@ -352,8 +374,7 @@ class ReconciliationState(val graph: GraphState) {
                 }
             }
         }
-
-        for (attr in componentKeySet) {
+        forEachKey(oldComponentsMap, newComponentsMap) { attr ->
             val oldComponent = oldComponentsMap?.get(attr)
             val newComponent = componentsMap.get(attr)
             oldComponent?.backrefs?.remove(AttrReference(result, attr))
@@ -365,20 +386,53 @@ class ReconciliationState(val graph: GraphState) {
         return result
     }
 
-    private fun reconcileList(node: Int, attr: String, components: List<Instance>, elements: List<NElement<*>>, env: Env): List<Instance> {
-        val componentsByKeys: Map<Any, Instance> = components.map { it.element.props.key!! to it }.toMap()
-        val reconciledList = reconcileByKeys(componentsByKeys, elements, env)
-        val (removes, adds) = updateOrder(node, attr, components.mapNotNull { it.node }, reconciledList.mapNotNull { it.node })
-        for (update in removes + adds) {
-            supply(update)
+    private fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>) {
+        val lcs = lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
+        val oldNodesSet = fastIntMap<Int>()
+        for (n in oldList) {
+            oldNodesSet[n] = n
         }
+        val allNodes = hashSetOf<Int>()
+        oldList.toCollection(allNodes)
+        newList.toCollection(allNodes)
+        for (c in allNodes) {
+            if (!lcs.contains(c) && oldNodesSet.containsKey(c)) {
+                supply(Update.Remove(node = node, value = c, attr = attr))
+            }
+        }
+        newList.forEachIndexed { i, c ->
+            if (!lcs.contains(c)) {
+                supply(Update.Add(node = node, value = c, attr = attr, index = i))
+            }
+        }
+    }
+
+
+    private fun reconcileList(node: Int, attr: String, components: List<Instance>, elements: List<NElement<*>>, env: Env): List<Instance> {
+        val componentsByKeys = fastStringMap<Instance>()
+        for (c in components) {
+            componentsByKeys[c.element.props.key!!] = c
+        }
+        val reconciledList = reconcileByKeys(componentsByKeys, elements, env)
+        updateOrder(node, attr, components.mapNotNull { it.node }, reconciledList.mapNotNull { it.node })
         return reconciledList
+    }
+}
+
+inline fun <T1 : Any?, T2 : Any?> forEachKey(m1: MutableMapLike<String, T1>?, m2: MutableMapLike<String, T2>?, crossinline block: (String) -> Unit) {
+    m1?.forEach { attr, _ ->
+        block(attr)
+    }
+    m2?.forEach { attr, _ ->
+        if (m1?.containsKey(attr) != true) {
+            block(attr)
+        }
     }
 }
 
 class GraphState(val platform: Platform, val driver: PlatformDriver) {
     private var nextNode: Int = 0
-    internal val callbacksTable: MutableMap<Int, MutableMap<String, CallbackInfo<*>>> = mutableMapOf()
+    internal val callbacksTable: MutableMapLike<Int, MutableMapLike<String, CallbackInfo<*>>> = fastIntMap()
 
     internal fun makeNode() = nextNode++
 
@@ -495,7 +549,7 @@ class UserInstance(element: NElement<*>,
                    backrefs: MutableSet<Reference>,
                    env: Env,
                    var view: View<*>?,
-                   var byKeys: Map<Any, Instance> = mutableMapOf(),
+                   var byKeys: MutableMapLike<String, Instance> = fastStringMap(),
                    var subst: Instance?) : Instance(element, node, backrefs, env)
 
 class HostInstance(element: NElement<*>,
@@ -504,24 +558,4 @@ class HostInstance(element: NElement<*>,
                    env: Env,
                    var childrenProps: MutableMapLike<String, List<Instance>>,
                    var componentProps: MutableMapLike<String, Instance?>,
-                   var valueProps: MutableMapLike<String, *>) : Instance(element, node, backrefs, env)
-
-
-fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>): Pair<List<Update.Remove>, List<Update.Add>> {
-    val lcs = lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
-    val oldNodesSet = oldList.toHashSet()
-    val removes = mutableListOf<Update.Remove>()
-    val adds = mutableListOf<Update.Add>()
-    val allNodes = (oldList + newList).toHashSet()
-    for (c in allNodes) {
-        if (!lcs.contains(c) && oldNodesSet.contains(c)) {
-            removes.add(Update.Remove(node = node, value = c, attr = attr))
-        }
-    }
-    newList.forEachIndexed { i, c ->
-        if (!lcs.contains(c)) {
-            adds.add(Update.Add(node = node, value = c, attr = attr, index = i))
-        }
-    }
-    return removes to adds
-}
+                   var valueProps: MutableMapLike<String, Any?>) : Instance(element, node, backrefs, env)

@@ -7,7 +7,6 @@ import noria.views.textNodeCT
 import org.jetbrains.noria.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 data class Click(val buttonNum: Int, val clickCount: Int) : Event()
 
@@ -73,7 +72,7 @@ class SimpleContainer : View<SimpleContainerProps>() {
         return Div with DomProps().apply {
             (0..props.x).mapTo(children) {
                 ::Label with LabelProps("$it").apply {
-                    key = it
+                    key = it.toString()
                 }
             }
         }
@@ -357,21 +356,21 @@ class UpdatesTest {
         checkUpdates(listOf(
                 Div with DomProps().apply {
                     children.add(textNodeCT with TextNodeProps().apply {
-                        key = 1
+                        key = "1"
                         text = "1"
                     })
                     children.add(textNodeCT with TextNodeProps().apply {
-                        key = 2
+                        key = "2"
                         text = "2"
                     })
                 } to null,
                 Div with DomProps().apply {
                     children.add(textNodeCT with TextNodeProps().apply {
-                        key = 3
+                        key = "3"
                         text = "3"
                     })
                     children.add(textNodeCT with TextNodeProps().apply {
-                        key = 1
+                        key = "1"
                         text = "1"
                     })
                 } to listOf(
@@ -380,11 +379,11 @@ class UpdatesTest {
                         Update.Add(node = 0, attr = "children", value = 2, index = 0)),
                 Div with DomProps().apply {
                     children.add(textNodeCT with TextNodeProps().apply {
-                        key = 1
+                        key = "1"
                         text = "1"
                     })
                     children.add(textNodeCT with TextNodeProps().apply {
-                        key = 4
+                        key = "4"
                         text = "4"
                     })
                 } to listOf(
@@ -399,6 +398,5 @@ class UpdatesTest {
         checkUpdates(listOf(
                 ::MyMacComponent with MyProps() to null,
                 ::MyMacComponent with MyProps(x = 1) to listOf(Update.Add(node = 5, attr = "subviews", value = 2, index = 1))))
-
     }
 }
