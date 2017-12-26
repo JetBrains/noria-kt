@@ -207,122 +207,109 @@ class UpdatesTest {
                 Update.Remove(node = 1, attr = "children", value = 2),
                 Update.Add(node = 1, attr = "children", value = 3, index = 0)), updates1)
     }
-/*
-    @Test
-    fun `test reify`() {
+
+    fun checkUpdates(testData: List<Pair<NElement<*>, List<Update>?>>): List<Update>? {
         val d = CapturingDriver()
         val c = GraphState(DOMPlatform, d)
-        c.reconcile(::Reifies with ReifiesProps(0))
-        d.updates()
-        c.reconcile(::Reifies with ReifiesProps(1))
-        val updates = d.updates()
-        assertEquals(listOf(
-                Update.Remove(node = 2, attr = "children", value = 0),
-                Update.Add(node = 3, attr = "children", value = 0, index = 0)
-        ), updates)
+        var i: Instance? = null
+        var lastUpdates: List<Update>? = null
+        for ((element, updates) in testData) {
+            val (i1, actualUpdates) = ReconciliationState(c).reconcile(i, element)
+            if (updates != null) {
+                assertEquals(updates, actualUpdates)
+            }
+            lastUpdates = actualUpdates
+            i = i1
+        }
+        return lastUpdates
+    }
+
+    @Test
+    fun `test reify`() {
+        checkUpdates(listOf(
+                ::Reifies with ReifiesProps(0) to null,
+                ::Reifies with ReifiesProps(1) to listOf(
+                        Update.Remove(node = 2, attr = "children", value = 0),
+                        Update.Add(node = 3, attr = "children", value = 0, index = 0)
+                )))
     }
 
     @Test
     fun `recursive destroy`() {
-        val d = CapturingDriver()
-        val c = GraphState(DOMPlatform, d)
-        c.reconcile(Div with DomProps().apply {
-            children.add(Span with DomProps().apply {
-                children.add(Pre with DomProps())
-            })
-        })
-        d.updates()
-        c.reconcile(Div with DomProps())
-        val updates = d.updates()
-        assertEquals(listOf(
-                Update.Remove(node = 0, attr = "children", value = 1),
-                Update.DestroyNode(node = 1),
-                Update.DestroyNode(node = 2)), updates)
-    }
-
-    @Test
-    fun `test app component`() {
-        val d = CapturingDriver()
-        val c = GraphState(DOMPlatform, d)
-        fun h(cnt: Int) {
-            c.reconcile(::AppComponent with AppProps(cnt, ::h))
-        }
-
-        c.reconcile(::AppComponent with AppProps(0, ::h))
-        c.handleEvent(EventInfo(source = 2, name = "click", event = DomEvent()))
+        checkUpdates(listOf(
+                Div with DomProps().apply {
+                    children.add(Span with DomProps().apply {
+                        children.add(Pre with DomProps())
+                    })
+                } to null,
+                Div with DomProps() to listOf(
+                        Update.Remove(node = 0, attr = "children", value = 1),
+                        Update.DestroyNode(node = 1),
+                        Update.DestroyNode(node = 2))
+        ))
     }
 
     @Test
     fun `testing high-order components`() {
-        val d = CapturingDriver()
-        val c = GraphState(DOMPlatform, d)
         val Foo = HostComponentType<TestProps1>("foo")
         val Bar = HostComponentType<TestProps1>("bar")
         val Baz = HostComponentType<TestProps1>("baz")
         val Fizz = HostComponentType<TestProps1>("fizz")
         val Fuzz = HostComponentType<TestProps1>("fuzz")
-        c.reconcile(::HO with HOProps(
-                x = Foo with TestProps1(),
-                y = Bar with TestProps1()))
-        assertEquals(listOf(
-                Update.MakeNode(node = 0, type = "foo", parameters = emptyMap()),
-                Update.MakeNode(node = 1, type = "bar", parameters = emptyMap()),
-                Update.MakeNode(node = 2, type = "div", parameters = emptyMap()),
-                Update.Add(node = 2, attr = "children", value = 0, index = 0),
-                Update.Add(node = 2, attr = "children", value = 1, index = 1)
-        ), d.updates())
 
-        c.reconcile(::HO with HOProps(
-                x = Foo with TestProps1(),
-                y = Baz with TestProps1()))
-        assertEquals(listOf(
-                Update.MakeNode(node = 3, type = "baz", parameters = emptyMap()),
-                Update.Remove(node = 2, attr = "children", value = 1),
-                Update.Add(node = 2, attr = "children", value = 3, index = 1),
-                Update.DestroyNode(node = 1)
-        ), d.updates())
-
-        c.reconcile(::HO with HOProps(
-                x = Fizz with TestProps1(),
-                y = Fuzz with TestProps1()))
-        assertEquals(listOf(
-                Update.MakeNode(node = 4, type = "fizz", parameters = emptyMap()),
-                Update.MakeNode(node = 5, type = "fuzz", parameters = emptyMap()),
-                Update.Remove(node = 2, attr = "children", value = 0),
-                Update.Remove(node = 2, attr = "children", value = 3),
-                Update.Add(node = 2, attr = "children", value = 4, index = 0),
-                Update.Add(node = 2, attr = "children", value = 5, index = 1),
-                Update.DestroyNode(node = 0),
-                Update.DestroyNode(node = 3)
-        ), d.updates())
+        checkUpdates(listOf(
+                ::HO with HOProps(
+                        x = Foo with TestProps1(),
+                        y = Bar with TestProps1()) to listOf(
+                        Update.MakeNode(node = 0, type = "foo", parameters = emptyMap()),
+                        Update.MakeNode(node = 1, type = "bar", parameters = emptyMap()),
+                        Update.MakeNode(node = 2, type = "div", parameters = emptyMap()),
+                        Update.Add(node = 2, attr = "children", value = 0, index = 0),
+                        Update.Add(node = 2, attr = "children", value = 1, index = 1)
+                ),
+                ::HO with HOProps(
+                        x = Foo with TestProps1(),
+                        y = Baz with TestProps1()) to listOf(
+                        Update.MakeNode(node = 3, type = "baz", parameters = emptyMap()),
+                        Update.Remove(node = 2, attr = "children", value = 1),
+                        Update.Add(node = 2, attr = "children", value = 3, index = 1),
+                        Update.DestroyNode(node = 1)
+                ),
+                ::HO with HOProps(
+                        x = Fizz with TestProps1(),
+                        y = Fuzz with TestProps1()) to
+                        listOf(
+                                Update.MakeNode(node = 4, type = "fizz", parameters = emptyMap()),
+                                Update.MakeNode(node = 5, type = "fuzz", parameters = emptyMap()),
+                                Update.Remove(node = 2, attr = "children", value = 0),
+                                Update.Remove(node = 2, attr = "children", value = 3),
+                                Update.Add(node = 2, attr = "children", value = 4, index = 0),
+                                Update.Add(node = 2, attr = "children", value = 5, index = 1),
+                                Update.DestroyNode(node = 0),
+                                Update.DestroyNode(node = 3)
+                        )))
     }
 
 
     @Test
     fun `simple container test`() {
-        val d = CapturingDriver()
-        val c = GraphState(DOMPlatform, d)
-        c.reconcile(::SimpleContainer with SimpleContainerProps(x = 2))
-        d.updates()
-        c.reconcile(::SimpleContainer with SimpleContainerProps(x = 2))
-        assert(d.updates().isEmpty())
-        c.reconcile(::SimpleContainer with SimpleContainerProps(x = 1))
-        assertEquals(listOf(
-                Update.Remove(node = 0, attr = "children", value = 3),
-                Update.DestroyNode(node = 3)), d.updates())
-        c.reconcile(::SimpleContainer with SimpleContainerProps(x = 3))
-        assertEquals(listOf(
-                Update.MakeNode(node = 4, type = "textnode", parameters = emptyMap()),
-                Update.SetAttr(node = 4, attr = "text", value = "2"),
-                Update.MakeNode(node = 5, type = "textnode", parameters = emptyMap()),
-                Update.SetAttr(node = 5, attr = "text", value = "3"),
-                Update.Add(node = 0, attr = "children", value = 4, index = 2),
-                Update.Add(node = 0, attr = "children", value = 5, index = 3)
-        ), d.updates())
-        c.reconcile(::SimpleContainer with SimpleContainerProps(x = 2))
-        assertEquals(listOf(
-                Update.Remove(node = 0, attr = "children", value = 5),
-                Update.DestroyNode(node = 5)), d.updates())
+        checkUpdates(listOf(
+                ::SimpleContainer with SimpleContainerProps(x = 2) to null,
+                ::SimpleContainer with SimpleContainerProps(x = 2) to emptyList<Update>(),
+                ::SimpleContainer with SimpleContainerProps(x = 1) to listOf(
+                        Update.Remove(node = 0, attr = "children", value = 3),
+                        Update.DestroyNode(node = 3)),
+                ::SimpleContainer with SimpleContainerProps(x = 3) to listOf(
+                        Update.MakeNode(node = 4, type = "textnode", parameters = emptyMap()),
+                        Update.SetAttr(node = 4, attr = "text", value = "2"),
+                        Update.MakeNode(node = 5, type = "textnode", parameters = emptyMap()),
+                        Update.SetAttr(node = 5, attr = "text", value = "3"),
+                        Update.Add(node = 0, attr = "children", value = 4, index = 2),
+                        Update.Add(node = 0, attr = "children", value = 5, index = 3)
+                ),
+                ::SimpleContainer with SimpleContainerProps(x = 2) to listOf(
+                        Update.Remove(node = 0, attr = "children", value = 5),
+                        Update.DestroyNode(node = 5))))
     }
 
     @Test
@@ -332,100 +319,86 @@ class UpdatesTest {
         val hoy = HostComponentType<TestProps1>("hoy")
         val hiy = HostComponentType<TestProps1>("hiy")
         val fu = HostComponentType<TestProps1>("fu")
-        val c = GraphState(DOMPlatform, d)
+
         val e0 = Div with DomProps().apply {
             children.add(hey with TestProps1().apply { key = "hey" })
             children.add(hoy with TestProps1().apply { key = "hoy" })
         }
-        c.reconcile(e0)
-        assertEquals(listOf(
-                Update.MakeNode(node = 0, type = "div", parameters = emptyMap()),
-                Update.MakeNode(node = 1, type = "hey", parameters = emptyMap()),
-                Update.MakeNode(node = 2, type = "hoy", parameters = emptyMap()),
-                Update.Add(node = 0, attr = "children", value = 1, index = 0),
-                Update.Add(node = 0, attr = "children", value = 2, index = 1)), d.updates())
-        c.reconcile(e0)
-        assert(d.updates().isEmpty())
-        val e1 = Div with DomProps().apply {
-            children.add(hiy with TestProps1().apply { key = "hiy" })
-            children.add(hoy with TestProps1().apply { key = "hoy" })
-            children.add(fu with TestProps1().apply { key = "fu" })
-        }
-        c.reconcile(e1)
-        assertEquals(listOf(
-                Update.MakeNode(node = 3, type = "hiy", parameters = emptyMap()),
-                Update.MakeNode(node = 4, type = "fu", parameters = emptyMap()),
-                Update.Remove(node = 0, attr = "children", value = 1),
-                Update.Add(node = 0, attr = "children", value = 3, index = 0),
-                Update.Add(node = 0, attr = "children", value = 4, index = 2),
-                Update.DestroyNode(node = 1)), d.updates())
-        val e2 = Div with DomProps().apply {
-            children.add(hoy with TestProps1().apply { key = "hoy" })
-            children.add(hiy with TestProps1().apply { key = "hiy" })
-            children.add(fu with TestProps1().apply { key = "fu" })
-        }
-        c.reconcile(e2)
-        assertEquals(listOf(
-                Update.Remove(node = 0, attr = "children", value = 2),
-                Update.Add(node = 0, attr = "children", value = 2, index = 0)), d.updates())
-
+        checkUpdates(listOf(
+                e0 to listOf(
+                        Update.MakeNode(node = 0, type = "div", parameters = emptyMap()),
+                        Update.MakeNode(node = 1, type = "hey", parameters = emptyMap()),
+                        Update.MakeNode(node = 2, type = "hoy", parameters = emptyMap()),
+                        Update.Add(node = 0, attr = "children", value = 1, index = 0),
+                        Update.Add(node = 0, attr = "children", value = 2, index = 1)),
+                e0 to emptyList(),
+                Div with DomProps().apply {
+                    children.add(hiy with TestProps1().apply { key = "hiy" })
+                    children.add(hoy with TestProps1().apply { key = "hoy" })
+                    children.add(fu with TestProps1().apply { key = "fu" })
+                } to listOf(
+                        Update.MakeNode(node = 3, type = "hiy", parameters = emptyMap()),
+                        Update.MakeNode(node = 4, type = "fu", parameters = emptyMap()),
+                        Update.Remove(node = 0, attr = "children", value = 1),
+                        Update.Add(node = 0, attr = "children", value = 3, index = 0),
+                        Update.Add(node = 0, attr = "children", value = 4, index = 2),
+                        Update.DestroyNode(node = 1)),
+                Div with DomProps().apply {
+                    children.add(hoy with TestProps1().apply { key = "hoy" })
+                    children.add(hiy with TestProps1().apply { key = "hiy" })
+                    children.add(fu with TestProps1().apply { key = "fu" })
+                } to listOf(
+                        Update.Remove(node = 0, attr = "children", value = 2),
+                        Update.Add(node = 0, attr = "children", value = 2, index = 0))))
     }
 
     @Test
     fun `reuse with same type`() {
-        val d = CapturingDriver()
-        val c = GraphState(DOMPlatform, d)
-        val e0 = Div with DomProps().apply {
-            children.add(textNodeCT with TextNodeProps().apply {
-                key = 1
-                text = "1"
-            })
-            children.add(textNodeCT with TextNodeProps().apply {
-                key = 2
-                text = "2"
-            })
-        }
-        c.reconcile(e0)
-        d.updates()
-        val e1 = Div with DomProps().apply {
-            children.add(textNodeCT with TextNodeProps().apply {
-                key = 3
-                text = "3"
-            })
-            children.add(textNodeCT with TextNodeProps().apply {
-                key = 1
-                text = "1"
-            })
-        }
-        c.reconcile(e1)
-        assertEquals(listOf(
-                Update.SetAttr(node = 2, attr = "text", value = "3"),
-                Update.Remove(node = 0, attr = "children", value = 2),
-                Update.Add(node = 0, attr = "children", value = 2, index = 0)), d.updates())
-        val e2 = Div with DomProps().apply {
-            children.add(textNodeCT with TextNodeProps().apply {
-                key = 1
-                text = "1"
-            })
-            children.add(textNodeCT with TextNodeProps().apply {
-                key = 4
-                text = "4"
-            })
-        }
-        c.reconcile(e2)
-        assertEquals(listOf(
-                Update.SetAttr(node = 2, attr = "text", value = "4"),
-                Update.Remove(node = 0, attr = "children", value = 1),
-                Update.Add(node = 0, attr = "children", value = 1, index = 0)), d.updates())
+        checkUpdates(listOf(
+                Div with DomProps().apply {
+                    children.add(textNodeCT with TextNodeProps().apply {
+                        key = 1
+                        text = "1"
+                    })
+                    children.add(textNodeCT with TextNodeProps().apply {
+                        key = 2
+                        text = "2"
+                    })
+                } to null,
+                Div with DomProps().apply {
+                    children.add(textNodeCT with TextNodeProps().apply {
+                        key = 3
+                        text = "3"
+                    })
+                    children.add(textNodeCT with TextNodeProps().apply {
+                        key = 1
+                        text = "1"
+                    })
+                } to listOf(
+                        Update.SetAttr(node = 2, attr = "text", value = "3"),
+                        Update.Remove(node = 0, attr = "children", value = 2),
+                        Update.Add(node = 0, attr = "children", value = 2, index = 0)),
+                Div with DomProps().apply {
+                    children.add(textNodeCT with TextNodeProps().apply {
+                        key = 1
+                        text = "1"
+                    })
+                    children.add(textNodeCT with TextNodeProps().apply {
+                        key = 4
+                        text = "4"
+                    })
+                } to listOf(
+                        Update.SetAttr(node = 2, attr = "text", value = "4"),
+                        Update.Remove(node = 0, attr = "children", value = 1),
+                        Update.Add(node = 0, attr = "children", value = 1, index = 0))
+        ))
     }
 
     @Test
     fun `Reconciliation keeps the view and adds update for new subview`() {
-        val d = CapturingDriver()
-        val c = GraphState(DOMPlatform, d)
-        c.reconcile(::MyMacComponent with MyProps())
-        d.updates()
-        c.reconcile(::MyMacComponent with MyProps(x = 1))
-        assertTrue(d.updates().single() is Update.Add, "There should be single update of adding subview")
-    }*/
+        checkUpdates(listOf(
+                ::MyMacComponent with MyProps() to null,
+                ::MyMacComponent with MyProps(x = 1) to listOf(Update.Add(node = 5, attr = "subviews", value = 2, index = 1))))
+
+    }
 }

@@ -102,9 +102,9 @@ class ReconciliationState(val graph: GraphState) {
     }
 
     //TODO remove, tests only
-    fun reconcile(e: NElement<RootProps>): List<Update> {
-        reconcileImpl(null, e, Env(null, emptyMap()))
-        return updates
+    fun reconcile(component: Instance?, e: NElement<*>): Pair<Instance?, List<Update>> {
+        val instance = reconcileImpl(component, e, Env(null, emptyMap()))
+        return instance to updates
     }
 
     private fun reconcileImpl(component: Instance?, e: NElement<*>?, env: Env): Instance? =
