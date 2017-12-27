@@ -1,7 +1,7 @@
 package noria
 
-import org.jetbrains.noria.*
-import org.jetbrains.noria.components.*
+import noria.*
+import noria.components.*
 import kotlin.browser.*
 
 class AppProps

@@ -1,4 +1,4 @@
-package org.jetbrains.noria.utils
+package noria.utils
 
 
 interface MutableMapLike<K : Any, V> {

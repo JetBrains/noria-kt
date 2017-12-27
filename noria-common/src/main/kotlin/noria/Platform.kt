@@ -1,4 +1,4 @@
-package org.jetbrains.noria
+package noria
 
 import kotlin.reflect.KClass
 

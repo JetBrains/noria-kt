@@ -1,9 +1,9 @@
 package noria
 
 import noria.views.DomEvent
-import org.jetbrains.noria.EventInfo
-import org.jetbrains.noria.Host
-import org.jetbrains.noria.Update
+import noria.EventInfo
+import noria.Host
+import noria.Update
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import org.w3c.dom.Text

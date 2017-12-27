@@ -1,7 +1,7 @@
 package noria.views
 
-import org.jetbrains.noria.*
-import org.jetbrains.noria.components.*
+import noria.*
+import noria.components.*
 
 class TextNodeProps : HostProps() {
     var text: String by value()

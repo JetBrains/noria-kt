@@ -1,6 +1,6 @@
-package org.jetbrains.noria
+package noria
 
-import org.jetbrains.noria.utils.*
+import noria.utils.*
 import kotlin.properties.*
 import kotlin.reflect.*
 

@@ -1,7 +1,7 @@
-package org.jetbrains.noria.components
+package noria.components
 
-import org.jetbrains.noria.*
-import org.jetbrains.noria.utils.*
+import noria.*
+import noria.utils.*
 
 enum class FlexDirection {
     row, column, rowReverse, columnReverse;

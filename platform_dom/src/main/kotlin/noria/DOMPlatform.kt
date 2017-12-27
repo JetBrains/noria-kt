@@ -1,8 +1,8 @@
 package noria
 
 import noria.views.*
-import org.jetbrains.noria.*
-import org.jetbrains.noria.components.*
+import noria.*
+import noria.components.*
 
 object DOMPlatform : Platform() {
     init {

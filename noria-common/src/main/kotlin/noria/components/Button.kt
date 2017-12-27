@@ -1,6 +1,6 @@
-package org.jetbrains.noria.components
+package noria.components
 
-import org.jetbrains.noria.*
+import noria.*
 
 val Button = PlatformComponentType<ButtonProps>()
 

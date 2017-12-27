@@ -1,6 +1,6 @@
 package noria.views
 
-import org.jetbrains.noria.*
+import noria.*
 
 
 class DOMRootProps : DomProps() {

@@ -1,6 +1,6 @@
-package org.jetbrains.noria
+package noria
 
-import org.jetbrains.noria.utils.*
+import noria.utils.*
 
 interface RenderContext {
     fun <T> reify(e: NElement<T>): NElement<T>

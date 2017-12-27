@@ -1,9 +1,9 @@
 package noria.views
 
-import org.jetbrains.noria.Event
-import org.jetbrains.noria.NElement
-import org.jetbrains.noria.HostProps
-import org.jetbrains.noria.RenderContext
+import noria.Event
+import noria.NElement
+import noria.HostProps
+import noria.RenderContext
 
 class DomEvent : Event() {
 
