@@ -1,10 +1,35 @@
 package noria
 
+import noria.views.Div
 import noria.views.DomEvent
 import noria.views.DomProps
+import noria.views.Pre
+import noria.views.Span
 import noria.views.TextNodeProps
+import noria.views.div
 import noria.views.textNodeCT
-import org.jetbrains.noria.*
+import org.jetbrains.noria.CallbackInfo
+import org.jetbrains.noria.Event
+import org.jetbrains.noria.EventInfo
+import org.jetbrains.noria.GraphState
+import org.jetbrains.noria.HostComponentType
+import org.jetbrains.noria.HostProps
+import org.jetbrains.noria.Instance
+import org.jetbrains.noria.JustifyContent
+import org.jetbrains.noria.NElement
+import org.jetbrains.noria.PlatformDriver
+import org.jetbrains.noria.Props
+import org.jetbrains.noria.ReconciliationState
+import org.jetbrains.noria.RenderContext
+import org.jetbrains.noria.Update
+import org.jetbrains.noria.View
+import org.jetbrains.noria.button
+import org.jetbrains.noria.capture
+import org.jetbrains.noria.createElement
+import org.jetbrains.noria.fastStringMap
+import org.jetbrains.noria.hbox
+import org.jetbrains.noria.label
+import org.jetbrains.noria.vbox
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -26,15 +51,16 @@ val NSLayoutConstraint = HostComponentType<NSConstraint>("NSLayoutConstraint")
 data class MyProps(val x: Int = 0) : Props()
 class MyMacComponent : View<MyProps>() {
     override fun RenderContext.render() {
-        val v1 = capture {NSView with NSViewProps().apply {
-            subviews.add(NSView with NSViewProps())
-        }} as NElement<NSViewProps>
-        val v2 = capture { NSView with NSViewProps().apply {
-            subviews.add(NSView with NSViewProps())
+        val v1 = NSView.createElement(NSViewProps().apply {
+            subviews.add(NSView.createElement(NSViewProps()))
+        })
+
+        val v2 = NSView.createElement(NSViewProps().apply {
+            subviews.add(NSView.createElement(NSViewProps()))
             onClick = CallbackInfo(true) { event ->
                 println("hello")
             }
-        }} as NElement<NSViewProps>
+        })
 
         capture {NSLayoutConstraint with NSConstraint().apply {
             view1 = v1
@@ -62,14 +88,10 @@ class Label : View<LabelProps>() {
     }
 }
 
-val Div = HostComponentType<DomProps>("div")
-val Span = HostComponentType<DomProps>("span")
-val Pre = HostComponentType<DomProps>("pre")
-
 data class SimpleContainerProps(val x: Int) : Props()
 class SimpleContainer : View<SimpleContainerProps>() {
     override fun RenderContext.render() {
-        Div with DomProps().apply {
+        div {
             for (c in (0..props.x)) {
                 ::Label with LabelProps("$c").apply {
                     key = c.toString()
@@ -84,7 +106,7 @@ data class SplitProps(val left: NElement<*>,
 
 class SplitView : View<SplitProps>() {
     override fun RenderContext.render() {
-        Div with DomProps().apply {
+        div {
             emit(props.left)
             emit(props.right)
         }
@@ -147,7 +169,7 @@ class CapturingDriver : PlatformDriver {
 data class WrapperProps(val w: NElement<*>?) : Props()
 class Wrapper : View<WrapperProps>() {
     override fun RenderContext.render() {
-        Div with DomProps().apply {
+        div {
             val w = props.w
             if (w != null) {
                 emit(w)
@@ -160,7 +182,7 @@ data class ReifiesProps(val i: Int) : Props()
 class Reifies : View<ReifiesProps>() {
     override fun RenderContext.render() {
         val e = capture {label("some text")}
-        Div with DomProps().apply {
+        div {
             if (props.i == 0) {
                 ::Wrapper with WrapperProps(e)
             } else {
@@ -195,7 +217,7 @@ class UpdatesTest {
         val d = CapturingDriver()
         val c = GraphState(DOMPlatform, d)
         c.mount("root") {
-            Div with DomProps().apply {
+            div {
                 ::RenderCounter with Props()
             }
         }
@@ -227,16 +249,16 @@ class UpdatesTest {
         return lastUpdates
     }
 
-    infix fun <T: Props> Render<T>.with(props: T): NElement<T> = NElement.Fun(this, props)
-    infix fun <T: Props> Constructor<T>.with(props: T) : NElement<T> = NElement.Class(this, props)
-    infix fun <T: HostProps> HostComponentType<T>.with(props: T) : NElement<T> = NElement.HostElement(this, props)
-    infix fun <T: Props> PlatformComponentType<T>.with(props: T) : NElement<T> = NElement.PlatformDispatch(this, props)
+    inline fun div(build: DomProps.() -> Unit): NElement<*> {
+        return Div.createElement(DomProps().apply(build))
+    }
+
 
     @Test
     fun `test reify`() {
         checkUpdates(listOf(
-                ::Reifies with ReifiesProps(0) to null,
-                ::Reifies with ReifiesProps(1) to listOf(
+                ::Reifies.createElement(ReifiesProps(0)) to null,
+                ::Reifies.createElement(ReifiesProps(1)) to listOf(
                         Update.Remove(node = 2, attr = "children", value = 0),
                         Update.Add(node = 3, attr = "children", value = 0, index = 0)
                 )))
@@ -245,12 +267,12 @@ class UpdatesTest {
     @Test
     fun `recursive destroy`() {
         checkUpdates(listOf(
-                Div with DomProps().apply {
+                div {
                     Span with DomProps().apply {
                         Pre with DomProps()
                     }
                 } to null,
-                Div with DomProps() to listOf(
+                Div.createElement(DomProps()) to listOf(
                         Update.Remove(node = 0, attr = "children", value = 1),
                         Update.DestroyNode(node = 1),
                         Update.DestroyNode(node = 2))
@@ -266,26 +288,26 @@ class UpdatesTest {
         val Fuzz = HostComponentType<TestProps1>("fuzz")
 
         checkUpdates(listOf(
-                ::HO with HOProps(
-                        x = Foo with TestProps1(),
-                        y = Bar with TestProps1()) to listOf(
+                ::HO.createElement(HOProps(
+                        x = Foo.createElement(TestProps1()),
+                        y = Bar.createElement(TestProps1()))) to listOf(
                         Update.MakeNode(node = 0, type = "foo", parameters = fastStringMap()),
                         Update.MakeNode(node = 1, type = "bar", parameters = fastStringMap()),
                         Update.MakeNode(node = 2, type = "div", parameters = fastStringMap()),
                         Update.Add(node = 2, attr = "children", value = 0, index = 0),
                         Update.Add(node = 2, attr = "children", value = 1, index = 1)
                 ),
-                ::HO with HOProps(
-                        x = Foo with TestProps1(),
-                        y = Baz with TestProps1()) to listOf(
+                ::HO.createElement(HOProps(
+                        x = Foo.createElement(TestProps1()),
+                        y = Baz.createElement(TestProps1()))) to listOf(
                         Update.MakeNode(node = 3, type = "baz", parameters = fastStringMap()),
                         Update.Remove(node = 2, attr = "children", value = 1),
                         Update.Add(node = 2, attr = "children", value = 3, index = 1),
                         Update.DestroyNode(node = 1)
                 ),
-                ::HO with HOProps(
-                        x = Fizz with TestProps1(),
-                        y = Fuzz with TestProps1()) to
+                ::HO.createElement(HOProps(
+                        x = Fizz.createElement(TestProps1()),
+                        y = Fuzz.createElement(TestProps1()))) to
                         listOf(
                                 Update.MakeNode(node = 4, type = "fizz", parameters = fastStringMap()),
                                 Update.MakeNode(node = 5, type = "fuzz", parameters = fastStringMap()),
@@ -302,12 +324,12 @@ class UpdatesTest {
     @Test
     fun `simple container test`() {
         checkUpdates(listOf(
-                ::SimpleContainer with SimpleContainerProps(x = 2) to null,
-                ::SimpleContainer with SimpleContainerProps(x = 2) to emptyList<Update>(),
-                ::SimpleContainer with SimpleContainerProps(x = 1) to listOf(
+                ::SimpleContainer.createElement(SimpleContainerProps(x = 2)) to null,
+                ::SimpleContainer.createElement(SimpleContainerProps(x = 2)) to emptyList<Update>(),
+                ::SimpleContainer.createElement(SimpleContainerProps(x = 1)) to listOf(
                         Update.Remove(node = 0, attr = "children", value = 3),
                         Update.DestroyNode(node = 3)),
-                ::SimpleContainer with SimpleContainerProps(x = 3) to listOf(
+                ::SimpleContainer.createElement(SimpleContainerProps(x = 3)) to listOf(
                         Update.MakeNode(node = 4, type = "textnode", parameters = fastStringMap()),
                         Update.SetAttr(node = 4, attr = "text", value = "2"),
                         Update.MakeNode(node = 5, type = "textnode", parameters = fastStringMap()),
@@ -315,7 +337,7 @@ class UpdatesTest {
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),
                         Update.Add(node = 0, attr = "children", value = 5, index = 3)
                 ),
-                ::SimpleContainer with SimpleContainerProps(x = 2) to listOf(
+                ::SimpleContainer.createElement(SimpleContainerProps(x = 2)) to listOf(
                         Update.Remove(node = 0, attr = "children", value = 5),
                         Update.DestroyNode(node = 5))))
     }
@@ -328,7 +350,7 @@ class UpdatesTest {
         val hiy = HostComponentType<TestProps1>("hiy")
         val fu = HostComponentType<TestProps1>("fu")
 
-        val e0 = Div with DomProps().apply {
+        val e0 = div {
             hey with TestProps1().apply { key = "hey" }
             hoy with TestProps1().apply { key = "hoy" }
         }
@@ -340,7 +362,7 @@ class UpdatesTest {
                         Update.Add(node = 0, attr = "children", value = 1, index = 0),
                         Update.Add(node = 0, attr = "children", value = 2, index = 1)),
                 e0 to emptyList(),
-                Div with DomProps().apply {
+                div {
                     hiy with TestProps1().apply { key = "hiy" }
                     hoy with TestProps1().apply { key = "hoy" }
                     fu with TestProps1().apply { key = "fu" }
@@ -351,7 +373,7 @@ class UpdatesTest {
                         Update.Add(node = 0, attr = "children", value = 3, index = 0),
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),
                         Update.DestroyNode(node = 1)),
-                Div with DomProps().apply {
+                div {
                     hoy with TestProps1().apply { key = "hoy" }
                     hiy with TestProps1().apply { key = "hiy" }
                     fu with TestProps1().apply { key = "fu" }
@@ -363,7 +385,7 @@ class UpdatesTest {
     @Test
     fun `reuse with same type`() {
         checkUpdates(listOf(
-                Div with DomProps().apply {
+                div {
                     textNodeCT with TextNodeProps().apply {
                         key = "1"
                         text = "1"
@@ -373,7 +395,7 @@ class UpdatesTest {
                         text = "2"
                     }
                 } to null,
-                Div with DomProps().apply {
+                div {
                     textNodeCT with TextNodeProps().apply {
                         key = "3"
                         text = "3"
@@ -386,7 +408,7 @@ class UpdatesTest {
                         Update.SetAttr(node = 2, attr = "text", value = "3"),
                         Update.Remove(node = 0, attr = "children", value = 2),
                         Update.Add(node = 0, attr = "children", value = 2, index = 0)),
-                Div with DomProps().apply {
+                div {
                     textNodeCT with TextNodeProps().apply {
                         key = "1"
                         text = "1"
@@ -405,7 +427,7 @@ class UpdatesTest {
     @Test
     fun `Reconciliation keeps the view and adds update for new subview`() {
         checkUpdates(listOf(
-                ::MyMacComponent with MyProps() to null,
-                ::MyMacComponent with MyProps(x = 1) to listOf(Update.Add(node = 5, attr = "subviews", value = 2, index = 1))))
+                ::MyMacComponent.createElement(MyProps()) to null,
+                ::MyMacComponent.createElement(MyProps(x = 1)) to listOf(Update.Add(node = 5, attr = "subviews", value = 2, index = 1))))
     }
 }

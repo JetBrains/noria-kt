@@ -5,9 +5,8 @@ open class ContainerProps(val children: MutableList<NElement<*>> = mutableListOf
         error("Should only be called on top-level in render function")
     }
 
-    override fun <T : Props> emit(e: NElement<T>): NElement<T> {
+    override fun <T : Props> emit(e: NElement<T>) {
         children += e
-        return e
     }
 }
 

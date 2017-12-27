@@ -10,14 +10,31 @@ open class Props {
 }
 
 interface RenderContext {
-    infix fun <T: Props> Render<T>.with(props: T): NElement<T> = emit(NElement.Fun(this, props))
-    infix fun <T: Props> Constructor<T>.with(props: T) : NElement<T> = emit(NElement.Class(this, props))
-    infix fun <T: HostProps> HostComponentType<T>.with(props: T) : NElement<T> = emit(NElement.HostElement(this, props))
-    infix fun <T: Props> PlatformComponentType<T>.with(props: T) : NElement<T> = emit(NElement.PlatformDispatch(this, props))
+    infix fun <T: Props> Render<T>.with(props: T) {
+        emit(createElement(props))
+    }
+
+    infix fun <T: Props> Constructor<T>.with(props: T) {
+        emit(createElement(props))
+    }
+
+    infix fun <T: HostProps> HostComponentType<T>.with(props: T) {
+        emit(createElement(props))
+    }
+
+    infix fun <T: Props> PlatformComponentType<T>.with(props: T) {
+        emit(createElement(props))
+    }
 
     fun <T : Props> reify(e: NElement<T>): NElement<T>
-    fun <T: Props> emit(e: NElement<T>): NElement<T>
+    fun <T: Props> emit(e: NElement<T>)
 }
+
+
+fun <T: Props> Render<T>.createElement(props: T): NElement<T> = NElement.Fun(this, props)
+fun <T: Props> Constructor<T>.createElement(props: T) : NElement<T> = NElement.Class(this, props)
+fun <T: HostProps> HostComponentType<T>.createElement(props: T) : NElement<T> = NElement.HostElement(this, props)
+fun <T: Props> PlatformComponentType<T>.createElement(props: T) : NElement<T> = NElement.PlatformDispatch(this, props)
 
 fun RenderContext.capture(build: RenderContext.() -> Unit) : NElement<*> {
     val capturingContext = RenderContextImpl()
@@ -36,9 +53,8 @@ class RenderContextImpl() : RenderContext {
         }
     }
 
-    override fun <T: Props> emit(e: NElement<T>): NElement<T> {
+    override fun <T: Props> emit(e: NElement<T>) {
         createdElements.add(e)
-        return e
     }
 }
 
@@ -71,11 +87,11 @@ data class HostComponentType<T : HostProps>(val type: String) : ComponentType<T>
 class PlatformComponentType<T : Props> : ComponentType<T>
 
 sealed class NElement<T : Props>(val props: T, open val type: Any) {
-    /*internal */class Fun<T : Props>(override val type: Render<T>, props: T) : NElement<T>(props, type)
-    /*internal */class Class<T : Props>(override val type: Constructor<T>, props: T) : NElement<T>(props, type)
-    /*internal */class HostElement<T : HostProps>(override val type: HostComponentType<T>, props: T) : NElement<T>(props, type)
-    /*internal */class PlatformDispatch<T : Props>(override val type: PlatformComponentType<T>, props: T) : NElement<T>(props, type)
-    /*internal */class Reified<T : Props>(val id: Int, val e: NElement<T>) : NElement<T>(e.props, e.type)
+    internal class Fun<T : Props>(override val type: Render<T>, props: T) : NElement<T>(props, type)
+    internal class Class<T : Props>(override val type: Constructor<T>, props: T) : NElement<T>(props, type)
+    internal class HostElement<T : HostProps>(override val type: HostComponentType<T>, props: T) : NElement<T>(props, type)
+    internal class PlatformDispatch<T : Props>(override val type: PlatformComponentType<T>, props: T) : NElement<T>(props, type)
+    internal class Reified<T : Props>(val id: Int, val e: NElement<T>) : NElement<T>(e.props, e.type)
 }
 
 sealed class Update {
@@ -478,7 +494,7 @@ class GraphState(val platform: Platform, val driver: PlatformDriver) {
         val root = RenderContextImpl().run {
             buildRoot()
             val element = createdElements.single()
-            rootCT with RootProps(id, element)
+            rootCT.createElement(RootProps(id, element))
         }
 
         ReconciliationState(this).mountRoot(root)

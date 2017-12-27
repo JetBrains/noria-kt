@@ -1,11 +1,11 @@
 package org.jetbrains.noria
 
-fun RenderContext.testNodes() : NElement<*> {
+fun RenderContext.testNodes() {
 
     ::link with LinkProps("")
 //    "div" with LinkProps("")
 
-    return vbox {
+    vbox {
         vbox {
             alignItems = Align.center
             

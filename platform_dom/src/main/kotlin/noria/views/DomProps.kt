@@ -1,7 +1,6 @@
 package noria.views
 
 import org.jetbrains.noria.Event
-import org.jetbrains.noria.HostComponentType
 import org.jetbrains.noria.NElement
 import org.jetbrains.noria.HostProps
 import org.jetbrains.noria.Props
@@ -23,9 +22,8 @@ open class DomProps : HostProps(), RenderContext {
         error("Should only be called on top level in render function")
     }
 
-    override fun <T : Props> emit(e: NElement<T>): NElement<T> {
+    override fun <T : Props> emit(e: NElement<T>) {
         children.add(e)
-        return e
     }
 }
 
