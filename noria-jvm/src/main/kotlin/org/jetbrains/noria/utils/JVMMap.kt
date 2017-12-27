@@ -1,4 +1,4 @@
-package org.jetbrains.noria
+package org.jetbrains.noria.utils
 
 import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor

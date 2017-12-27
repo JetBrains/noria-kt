@@ -132,6 +132,7 @@
     <inspection_tool class="CheckValidXmlInScriptTagBody" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="CheckXmlFileWithXercesValidator" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="ClassInitializerMayBeStatic" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="ClassName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="CloneCallsSuperClone" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="CloneDeclaresCloneNotSupported" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="CodeBlock2Expr" enabled="false" level="WARNING" enabled_by_default="false" />
@@ -147,6 +148,7 @@
     </inspection_tool>
     <inspection_tool class="ComponentRegistrationProblems" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="ConflictingAnnotations" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="ConstPropertyName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="ConstantConditionalExpression" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="ConstantConditionalExpressionJS" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="ConstantConditions" enabled="false" level="WARNING" enabled_by_default="false">
@@ -240,6 +242,7 @@
     </inspection_tool>
     <inspection_tool class="EmptyTryBlock" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="EmptyWebServiceClass" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="EnumEntryName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="EqualsBetweenInconvertibleTypes" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="EqualsWhichDoesntCheckParameterClass" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="ExceptionCaughtLocallyJS" enabled="false" level="WARNING" enabled_by_default="false" />
@@ -282,6 +285,7 @@
     <inspection_tool class="FtlReferencesInspection" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="FtlTypesInspection" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="FtlWellformednessInspection" enabled="false" level="ERROR" enabled_by_default="false" />
+    <inspection_tool class="FunctionName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="GWTRemoteServiceAsyncCheck" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="GWTStyleCheck" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="Geronimo" enabled="false" level="ERROR" enabled_by_default="false" />
@@ -531,6 +535,7 @@
     </inspection_tool>
     <inspection_tool class="LessUnresolvedImport" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="LessUnresolvedVariable" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="LocalVariableName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="LoopStatementThatDoesntLoopJS" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="LoopStatementsThatDontLoop" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="MVCPathVariableInspection" enabled="false" level="WARNING" enabled_by_default="false" />
@@ -589,11 +594,13 @@
     <inspection_tool class="NumberEquality" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="NumericOverflow" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="ObjectEqualsNull" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="ObjectPropertyName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="OctalIntegerJS" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="OctalLiteral" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="OneButtonGroup" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="OneWayWebMethod" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="OrredNotEqualExpression" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="PackageName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="PageflowModelInspection" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="PagesFileModelInspection" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="PagesModelInspection" enabled="false" level="ERROR" enabled_by_default="false" />
@@ -624,6 +631,8 @@
     </inspection_tool>
     <inspection_tool class="PointlessBooleanExpressionJS" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="PrimitiveArrayArgumentToVariableArgMethod" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="PrivatePropertyName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="PropertyName" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
     <inspection_tool class="RedundantArrayCreation" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="RedundantCast" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="RedundantScopeBinding" enabled="false" level="WARNING" enabled_by_default="false" />

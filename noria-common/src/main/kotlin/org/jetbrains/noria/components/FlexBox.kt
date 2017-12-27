@@ -1,4 +1,7 @@
-package org.jetbrains.noria
+package org.jetbrains.noria.components
+
+import org.jetbrains.noria.*
+import org.jetbrains.noria.utils.*
 
 enum class FlexDirection {
     row, column, rowReverse, columnReverse;
@@ -11,6 +14,9 @@ enum class FlexWrap {
 
     override fun toString() = name.hyphenize()
 }
+
+val HBox = PlatformComponentType<BoxProps>()
+val VBox = PlatformComponentType<BoxProps>()
 
 class BoxProps : ContainerProps() {
     var flexDirection: FlexDirection = FlexDirection.row
@@ -55,14 +61,14 @@ enum class JustifyContent {
 }
 
 inline fun RenderContext.vbox(key: String? = null, builder: BoxProps.() -> Unit) {
-    x(vboxCT, key) {
+    x(VBox, key) {
         flexDirection = FlexDirection.column
         builder()
     }
 }
 
 inline fun RenderContext.hbox(key: String? = null, builder: BoxProps.() -> Unit) {
-    x(hboxCT, key){
+    x(HBox, key){
         flexDirection = FlexDirection.row
         builder()
     }

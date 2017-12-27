@@ -2,13 +2,14 @@ package noria
 
 import noria.views.*
 import org.jetbrains.noria.*
+import org.jetbrains.noria.components.*
 
 object DOMPlatform : Platform() {
     init {
-        register(rootCT, ::DOMRoot)
-        register(hboxCT, ::FlexBox)
-        register(vboxCT, ::FlexBox)
-        register(labelCT, ::Label)
-        register(buttonCT, ::Button)
+        register(Root, ::DOMRoot)
+        register(HBox, ::FlexBox)
+        register(VBox, ::FlexBox)
+        register(Label, ::Label)
+        register(Button, ::Button)
     }
 }

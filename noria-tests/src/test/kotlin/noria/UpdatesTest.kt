@@ -2,6 +2,7 @@ package noria
 
 import noria.views.*
 import org.jetbrains.noria.*
+import org.jetbrains.noria.components.*
 import kotlin.test.*
 
 data class Click(val buttonNum: Int, val clickCount: Int) : Event()
@@ -22,23 +23,21 @@ val NSLayoutConstraint = HostComponentType<NSConstraint>("NSLayoutConstraint")
 data class MyProps(val x: Int = 0)
 class MyMacComponent : View<MyProps>() {
     override fun RenderContext.render() {
-        val v1 = createElement(NSView, NSViewProps().apply {
+        val v1 = reify(createElement(NSView, NSViewProps().apply {
             subviews.add(createElement(NSView, NSViewProps()))
-        })
+        }))
 
-        val v2 = createElement(NSView, NSViewProps().apply {
+        val v2 = reify(createElement(NSView, NSViewProps().apply {
             subviews.add(createElement(NSView, NSViewProps()))
             onClick = CallbackInfo(true) { event ->
                 println("hello")
             }
-        })
+        }))
 
-        capture {
-            x(NSLayoutConstraint) {
-                view1 = v1
-                view2 = v2
-            }
-        }
+        reify(createElement(NSLayoutConstraint, NSConstraint().apply {
+            view1 = v1
+            view2 = v2
+        }))
 
         x(NSView) {
             subviews.add(v1)
@@ -101,7 +100,7 @@ class HO : View<HOProps>() {
     }
 }
 
-class CapturingDriver : PlatformDriver {
+class CapturingDriver : Host {
     val capturedUpdates = mutableListOf<Update>()
     override fun applyUpdates(updates: List<Update>) {
         capturedUpdates.addAll(updates)
@@ -177,7 +176,7 @@ class UpdatesTest {
         val updates1 = d.updates()
         assertEquals(listOf(
                 Update.DestroyNode(node = 2),
-                Update.MakeNode(node = 3, type = "span", parameters = fastStringMap()),
+                Update.MakeNode(node = 3, type = "span", parameters = org.jetbrains.noria.utils.fastStringMap()),
                 Update.SetCallback(node = 3, attr = "click", async = true),
                 Update.Remove(node = 1, attr = "children", value = 2),
                 Update.Add(node = 1, attr = "children", value = 3, index = 0)), updates1)
@@ -241,16 +240,16 @@ class UpdatesTest {
                 createElement(::HO, HOProps(
                         x = createElement(Foo, TestProps1()),
                         y = createElement(Bar, TestProps1()))) to listOf(
-                        Update.MakeNode(node = 0, type = "foo", parameters = fastStringMap()),
-                        Update.MakeNode(node = 1, type = "bar", parameters = fastStringMap()),
-                        Update.MakeNode(node = 2, type = "div", parameters = fastStringMap()),
+                        Update.MakeNode(node = 0, type = "foo", parameters = org.jetbrains.noria.utils.fastStringMap()),
+                        Update.MakeNode(node = 1, type = "bar", parameters = org.jetbrains.noria.utils.fastStringMap()),
+                        Update.MakeNode(node = 2, type = "div", parameters = org.jetbrains.noria.utils.fastStringMap()),
                         Update.Add(node = 2, attr = "children", value = 0, index = 0),
                         Update.Add(node = 2, attr = "children", value = 1, index = 1)
                 ),
                 createElement(::HO, HOProps(
                         x = createElement(Foo, TestProps1()),
                         y = createElement(Baz, TestProps1()))) to listOf(
-                        Update.MakeNode(node = 3, type = "baz", parameters = fastStringMap()),
+                        Update.MakeNode(node = 3, type = "baz", parameters = org.jetbrains.noria.utils.fastStringMap()),
                         Update.Remove(node = 2, attr = "children", value = 1),
                         Update.Add(node = 2, attr = "children", value = 3, index = 1),
                         Update.DestroyNode(node = 1)
@@ -259,8 +258,8 @@ class UpdatesTest {
                         x = createElement(Fizz, TestProps1()),
                         y = createElement(Fuzz, TestProps1()))) to
                         listOf(
-                                Update.MakeNode(node = 4, type = "fizz", parameters = fastStringMap()),
-                                Update.MakeNode(node = 5, type = "fuzz", parameters = fastStringMap()),
+                                Update.MakeNode(node = 4, type = "fizz", parameters = org.jetbrains.noria.utils.fastStringMap()),
+                                Update.MakeNode(node = 5, type = "fuzz", parameters = org.jetbrains.noria.utils.fastStringMap()),
                                 Update.Remove(node = 2, attr = "children", value = 0),
                                 Update.Remove(node = 2, attr = "children", value = 3),
                                 Update.Add(node = 2, attr = "children", value = 4, index = 0),
@@ -280,9 +279,9 @@ class UpdatesTest {
                         Update.Remove(node = 0, attr = "children", value = 3),
                         Update.DestroyNode(node = 3)),
                 createElement(::SimpleContainer, SimpleContainerProps(x = 3)) to listOf(
-                        Update.MakeNode(node = 4, type = "textnode", parameters = fastStringMap()),
+                        Update.MakeNode(node = 4, type = "textnode", parameters = org.jetbrains.noria.utils.fastStringMap()),
                         Update.SetAttr(node = 4, attr = "text", value = "2"),
-                        Update.MakeNode(node = 5, type = "textnode", parameters = fastStringMap()),
+                        Update.MakeNode(node = 5, type = "textnode", parameters = org.jetbrains.noria.utils.fastStringMap()),
                         Update.SetAttr(node = 5, attr = "text", value = "3"),
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),
                         Update.Add(node = 0, attr = "children", value = 5, index = 3)
@@ -306,9 +305,9 @@ class UpdatesTest {
         }
         checkUpdates(listOf(
                 e0 to listOf(
-                        Update.MakeNode(node = 0, type = "div", parameters = fastStringMap()),
-                        Update.MakeNode(node = 1, type = "hey", parameters = fastStringMap()),
-                        Update.MakeNode(node = 2, type = "hoy", parameters = fastStringMap()),
+                        Update.MakeNode(node = 0, type = "div", parameters = org.jetbrains.noria.utils.fastStringMap()),
+                        Update.MakeNode(node = 1, type = "hey", parameters = org.jetbrains.noria.utils.fastStringMap()),
+                        Update.MakeNode(node = 2, type = "hoy", parameters = org.jetbrains.noria.utils.fastStringMap()),
                         Update.Add(node = 0, attr = "children", value = 1, index = 0),
                         Update.Add(node = 0, attr = "children", value = 2, index = 1)),
                 e0 to emptyList(),
@@ -317,8 +316,8 @@ class UpdatesTest {
                     x(hoy, "hoy") {}
                     x(fu, "fu") {}
                 } to listOf(
-                        Update.MakeNode(node = 3, type = "hiy", parameters = fastStringMap()),
-                        Update.MakeNode(node = 4, type = "fu", parameters = fastStringMap()),
+                        Update.MakeNode(node = 3, type = "hiy", parameters = org.jetbrains.noria.utils.fastStringMap()),
+                        Update.MakeNode(node = 4, type = "fu", parameters = org.jetbrains.noria.utils.fastStringMap()),
                         Update.Remove(node = 0, attr = "children", value = 1),
                         Update.Add(node = 0, attr = "children", value = 3, index = 0),
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),

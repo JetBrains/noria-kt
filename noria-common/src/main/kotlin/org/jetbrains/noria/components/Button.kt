@@ -1,4 +1,8 @@
-package org.jetbrains.noria
+package org.jetbrains.noria.components
+
+import org.jetbrains.noria.*
+
+val Button = PlatformComponentType<ButtonProps>()
 
 data class ButtonProps(
         val title: String,
@@ -7,5 +11,5 @@ data class ButtonProps(
 )
 
 fun RenderContext.button(title: String, disabled: Boolean = false, action : () -> Unit) {
-    x(buttonCT, ButtonProps(title, disabled, action))
+    x(Button, ButtonProps(title, disabled, action))
 }

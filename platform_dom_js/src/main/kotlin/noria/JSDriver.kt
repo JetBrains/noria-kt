@@ -2,7 +2,7 @@ package noria
 
 import noria.views.DomEvent
 import org.jetbrains.noria.EventInfo
-import org.jetbrains.noria.PlatformDriver
+import org.jetbrains.noria.Host
 import org.jetbrains.noria.Update
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -21,7 +21,7 @@ private fun Element.insertChildAtIndex(child: Node, index: Int) {
     }
 }
 
-class JSDriver(val events: (EventInfo) -> Unit) : PlatformDriver {
+class JSDriver(val events: (EventInfo) -> Unit) : Host {
     private val nodes: dynamic = js("({})")
     private val callbacks = mutableMapOf<Pair<Int, String>, EventListener>()
 

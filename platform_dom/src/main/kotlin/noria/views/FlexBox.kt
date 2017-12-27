@@ -1,6 +1,7 @@
 package noria.views
 
 import org.jetbrains.noria.*
+import org.jetbrains.noria.components.*
 
 val Div = HostComponentType<DomProps>("div")
 val Span = HostComponentType<DomProps>("span")

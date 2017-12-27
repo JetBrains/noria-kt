@@ -1,7 +1,9 @@
-package org.jetbrains.noria
+package org.jetbrains.noria.utils
+
+import kotlin.reflect.*
 
 
-private val map = mutableMapOf<String, String>()
+private val map = fastStringMap<String>()
 
 fun String.hyphenize(): String = map.getOrPut(this) {
     buildString {
@@ -13,3 +15,5 @@ fun String.hyphenize(): String = map.getOrPut(this) {
         }
     }
 }
+
+expect fun <T:Any> KClass<T>.instantiate(): T

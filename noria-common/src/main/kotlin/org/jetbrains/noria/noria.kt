@@ -2,56 +2,10 @@
 
 package org.jetbrains.noria
 
+import org.jetbrains.noria.utils.*
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-interface RenderContext {
-    fun <T> reify(e: NElement<T>): NElement<T>
-    fun <T> emit(e: NElement<T>)
-}
-
-fun <T> RenderContext.x(cons: Constructor<T>, props: T, key: String? = null) {
-    emit(createElement(cons, props, key))
-}
-
-inline fun <reified T:Any> RenderContext.x(noinline cons: Constructor<T>, key: String? = null, build: T.() -> Unit) {
-    x(cons, T::class.instantiate().apply(build), key)
-}
-
-fun <T> RenderContext.x(render: Render<T>, props: T, key: String? = null) {
-    emit(createElement(render, props, key))
-}
-
-inline fun <reified T:Any> RenderContext.x(noinline render: Render<T>, key: String? = null, build: T.() -> Unit) {
-    x(render, T::class.instantiate().apply(build), key)
-}
-
-fun <T:HostProps> RenderContext.x(host: HostComponentType<T>, props: T, key: String? = null) {
-    emit(createElement(host, props, key))
-}
-
-inline fun <reified T:HostProps> RenderContext.x(host: HostComponentType<T>, key: String? = null, build: T.() -> Unit) {
-    x(host, T::class.instantiate().apply(build), key)
-}
-
-fun <T> RenderContext.x(host: PlatformComponentType<T>, props: T, key: String? = null) {
-    emit(createElement(host, props, key))
-}
-
-inline fun <reified T:Any> RenderContext.x(host: PlatformComponentType<T>, key: String? = null, build: T.() -> Unit) {
-    x(host, T::class.instantiate().apply(build), key)
-}
-
-fun <T> createElement(render: Render<T>, props: T, key: String? = null): NElement<T> = NElement.Fun(render, props, key)
-fun <T> createElement(cons: Constructor<T>, props: T, key: String? = null) : NElement<T> = NElement.Class(cons, props, key)
-fun <T: HostProps> createElement(hct: HostComponentType<T>, props: T, key: String? = null) : NElement<T> = NElement.HostElement(hct, props, key)
-fun <T> createElement(pct: PlatformComponentType<T>, props: T, key: String? = null) : NElement<T> = NElement.PlatformDispatch(pct, props, key)
-
-fun RenderContext.capture(build: RenderContext.() -> Unit) : NElement<*> {
-    val capturingContext = RenderContextImpl()
-    capturingContext.build()
-    return reify(capturingContext.createdElements.single())
-}
 
 class RenderContextImpl() : RenderContext {
     internal val reifiedElements: MutableList<NElement.Reified<*>> = mutableListOf()
@@ -67,56 +21,6 @@ class RenderContextImpl() : RenderContext {
     override fun <T> emit(e: NElement<T>) {
         createdElements.add(e)
     }
-}
-
-interface PlatformDriver {
-    fun applyUpdates(updates: List<Update>)
-}
-
-abstract class View<T> {
-    val props: T get() = _props ?: error("Props are not initialized yet")
-    internal var _props: T? = null
-    internal lateinit var context: GraphState
-    internal lateinit var instance: UserInstance
-
-    open fun shouldUpdate(newProps: T): Boolean {
-        return true // TODO props != newProps
-    }
-
-    fun forceUpdate() {
-        context.forceUpdate(instance)
-    }
-
-    abstract fun RenderContext.render()
-}
-
-typealias Render<T> = (T) -> NElement<*>
-typealias Constructor<T> = () -> View<T>
-
-interface ComponentType<T>
-data class HostComponentType<T : HostProps>(val type: String) : ComponentType<T>
-class PlatformComponentType<T> : ComponentType<T>
-
-sealed class NElement<T>(val props: T, open val type: Any, open var key: String?) {
-    internal class Fun<T>(override val type: Render<T>, props: T, key: String?) : NElement<T>(props, type, key)
-    internal class Class<T>(override val type: Constructor<T>, props: T, key: String?) : NElement<T>(props, type, key)
-    internal class HostElement<T : HostProps>(override val type: HostComponentType<T>, props: T, key: String?) : NElement<T>(props, type, key)
-    internal class PlatformDispatch<T>(override val type: PlatformComponentType<T>, props: T, key: String?) : NElement<T>(props, type, key)
-    internal class Reified<T>(val id: Int, val e: NElement<T>) : NElement<T>(e.props, e.type, null) {
-        override var key: String?
-            get() = e.key
-            set(value) {e.key = value}
-    }
-}
-
-sealed class Update {
-    data class MakeNode(val node: Int, val type: String, val parameters: MutableMapLike<String, Any?>) : Update()
-    data class SetAttr(val node: Int, val attr: String, val value: Any?) : Update()
-    data class SetCallback(val node: Int, val attr: String, val async: Boolean) : Update()
-    data class RemoveCallback(val node: Int, val attr: String) : Update()
-    data class Add(val node: Int, val attr: String, val value: Any?, val index: Int) : Update()
-    data class Remove(val node: Int, val attr: String, val value: Any?) : Update()
-    data class DestroyNode(val node: Int) : Update()
 }
 
 class Env(private val parent: Env?, private val vars: Map<Int, Instance>) {
@@ -488,7 +392,7 @@ inline fun <T1 : Any?, T2 : Any?> forEachKey(m1: MutableMapLike<String, T1>?, m2
     }
 }
 
-class GraphState(val platform: Platform, val driver: PlatformDriver) {
+class GraphState(val platform: Platform, val driver: Host) {
     private var nextNode: Int = 0
     internal val callbacksTable: MutableMapLike<Int, MutableMapLike<String, CallbackInfo<*>>> = fastIntMap()
 
@@ -509,25 +413,13 @@ class GraphState(val platform: Platform, val driver: PlatformDriver) {
         val root = RenderContextImpl().run {
             buildRoot()
             val element = createdElements.single()
-            createElement(rootCT, RootProps(id, element))
+            createElement(Root, RootProps(id, element))
         }
 
         ReconciliationState(this).mountRoot(root)
     }
 }
 
-abstract class Event {
-    var propagate: Boolean = true
-    var preventDefault: Boolean = false
-
-    fun stopPropagation() {
-        propagate = false
-    }
-
-    fun sudoPreventDefault() {
-        preventDefault = true
-    }
-}
 
 class EventInfo(var source: Int,
                 val name: String,
@@ -536,64 +428,6 @@ class EventInfo(var source: Int,
 typealias Handler<T> = (T) -> Unit
 
 data class CallbackInfo<in T : Event>(val async: Boolean, val cb: Handler<T>)
-
-abstract class HostProps {
-    val constructorParameters = fastStringMap<Any?>()
-
-    val componentsMap = fastStringMap<NElement<*>?>()
-    fun <T : NElement<*>> element(constructor: Boolean = false): ReadWriteProperty<Any, T> =
-            object : ReadWriteProperty<Any, T> {
-                override fun getValue(thisRef: Any, property: KProperty<*>): T =
-                        componentsMap[property.name] as T
-
-                override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-                    if (constructor) {
-                        constructorParameters[property.name] = value
-                    }
-                    componentsMap[property.name] = value
-                }
-            }
-
-    val valuesMap = fastStringMap<Any?>()
-    fun <T> value(constructor: Boolean = false): ReadWriteProperty<Any, T> =
-            object : ReadWriteProperty<Any, T> {
-                override fun getValue(thisRef: Any, property: KProperty<*>): T =
-                        valuesMap[property.name] as T
-
-                override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-                    if (constructor) {
-                        constructorParameters[property.name] = value
-                    }
-                    valuesMap[property.name] = value
-                }
-            }
-
-    val childrenMap = fastStringMap<List<NElement<*>?>>()
-    fun <T : List<NElement<*>>> elementList(): ReadWriteProperty<Any, T> =
-            object : ReadWriteProperty<Any, T> {
-                override fun getValue(thisRef: Any, property: KProperty<*>): T {
-                    if (!childrenMap.containsKey(property.name)) {
-                        childrenMap[property.name] = mutableListOf()
-                    }
-                    return childrenMap[property.name] as T
-                }
-
-                override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
-                    childrenMap[property.name] = value
-                }
-            }
-
-    val callbacks = fastStringMap<CallbackInfo<*>>()
-    fun <T : Event> handler(): ReadWriteProperty<Any, CallbackInfo<T>> =
-            object : ReadWriteProperty<Any, CallbackInfo<T>> {
-                override fun getValue(thisRef: Any, property: KProperty<*>): CallbackInfo<T> =
-                        callbacks[property.name] as CallbackInfo<T>
-
-                override fun setValue(thisRef: Any, property: KProperty<*>, value: CallbackInfo<T>) {
-                    callbacks[property.name] = value
-                }
-            }
-}
 
 interface Reference {
     val referer: Instance?

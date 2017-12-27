@@ -1,6 +1,7 @@
 package noria.views
 
 import org.jetbrains.noria.*
+import org.jetbrains.noria.components.*
 
 val inputCT = HostComponentType<InputProps>("input")
 class Button : View<ButtonProps>() {

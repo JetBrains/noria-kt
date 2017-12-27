@@ -1,4 +1,6 @@
-package org.jetbrains.noria
+package org.jetbrains.noria.components
+
+import org.jetbrains.noria.*
 
 open class ContainerProps(val children: MutableList<NElement<*>> = mutableListOf()) : RenderContext {
     override fun <T> reify(e: NElement<T>): NElement<T> {
