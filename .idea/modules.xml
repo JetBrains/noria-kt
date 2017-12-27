@@ -9,6 +9,7 @@
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/noria-tests/noria-tests.iml" filepath="$PROJECT_DIR$/.idea/modules/noria-tests/noria-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/platform_dom/platform_dom.iml" filepath="$PROJECT_DIR$/.idea/modules/platform_dom/platform_dom.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/platform_dom_js/platform_dom_js.iml" filepath="$PROJECT_DIR$/.idea/modules/platform_dom_js/platform_dom_js.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/platform_swing/platform_swing.iml" filepath="$PROJECT_DIR$/.idea/modules/platform_swing/platform_swing.iml" />
     </modules>
   </component>
 </project>

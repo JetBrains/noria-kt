@@ -1,7 +1,5 @@
 package noria
 
-import kotlin.reflect.KClass
-
 class PlatformComponentType<T> : ComponentType<T>
 
 open class Platform {

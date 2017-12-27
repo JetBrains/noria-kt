@@ -1,6 +1,5 @@
 package noria
 
-import noria.*
 import noria.components.*
 import kotlin.browser.*
 
