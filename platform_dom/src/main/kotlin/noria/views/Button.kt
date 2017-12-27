@@ -5,7 +5,7 @@ import org.jetbrains.noria.*
 val inputCT = HostComponentType<InputProps>("input")
 class Button : View<ButtonProps>() {
     override fun RenderContext.render() {
-        x(inputCT, InputProps().apply {
+        x(inputCT) {
             type = "button"
             value = props.title
 
@@ -16,6 +16,6 @@ class Button : View<ButtonProps>() {
             click = CallbackInfo(true) {
                 props.action()
             }
-        })
+        }
     }
 }

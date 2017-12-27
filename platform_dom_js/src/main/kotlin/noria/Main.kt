@@ -1,15 +1,7 @@
 package noria
 
-import org.jetbrains.noria.JustifyContent
-import org.jetbrains.noria.GraphState
-import org.jetbrains.noria.RenderContext
-import org.jetbrains.noria.View
-import org.jetbrains.noria.button
-import org.jetbrains.noria.hbox
-import org.jetbrains.noria.label
-import org.jetbrains.noria.vbox
-import org.jetbrains.noria.x
-import kotlin.browser.document
+import org.jetbrains.noria.*
+import kotlin.browser.*
 
 class AppProps
 class AppComponent : View<AppProps>() {

@@ -54,16 +54,16 @@ enum class JustifyContent {
     override fun toString() = name.hyphenize()
 }
 
-inline fun RenderContext.vbox(builder: BoxProps.() -> Unit) {
-    x(vboxCT, BoxProps().apply {
-    flexDirection = FlexDirection.column
-    builder()
-})
+inline fun RenderContext.vbox(key: String? = null, builder: BoxProps.() -> Unit) {
+    x(vboxCT, key) {
+        flexDirection = FlexDirection.column
+        builder()
+    }
 }
 
-inline fun RenderContext.hbox(builder: BoxProps.() -> Unit) {
-    x(hboxCT, BoxProps().apply {
-    flexDirection = FlexDirection.row
-    builder()
-})
+inline fun RenderContext.hbox(key: String? = null, builder: BoxProps.() -> Unit) {
+    x(hboxCT, key){
+        flexDirection = FlexDirection.row
+        builder()
+    }
 }

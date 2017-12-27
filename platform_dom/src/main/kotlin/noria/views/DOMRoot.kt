@@ -1,12 +1,8 @@
 package noria.views
 
-import org.jetbrains.noria.HostComponentType
-import org.jetbrains.noria.RenderContext
-import org.jetbrains.noria.RootProps
-import org.jetbrains.noria.View
-import org.jetbrains.noria.x
+import org.jetbrains.noria.*
 
-val Root = HostComponentType<DomProps>("root")
+val Root = HostComponentType<DOMRootProps>("root")
 
 class DOMRootProps : DomProps() {
     var id: String by value(true)
@@ -14,9 +10,9 @@ class DOMRootProps : DomProps() {
 
 class DOMRoot : View<RootProps>() {
     override fun RenderContext.render() {
-        x(Root, DOMRootProps().apply {
+        x(Root) {
             id = props.id
             children.add(props.child)
-        })
+        }
     }
 }

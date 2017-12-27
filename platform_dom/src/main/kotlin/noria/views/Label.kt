@@ -14,8 +14,6 @@ fun RenderContext.text(value: String, key: String? = null) = x(textNodeCT, key) 
 
 class Label : View<LabelProps>() {
     override fun RenderContext.render() {
-        x(textNodeCT, TextNodeProps().apply {
-            text = props.text
-        })
+        text(props.text)
     }
 }

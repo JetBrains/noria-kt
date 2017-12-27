@@ -1,37 +1,8 @@
 package noria
 
-import noria.views.Div
-import noria.views.DomEvent
-import noria.views.DomProps
-import noria.views.Pre
-import noria.views.Span
-import noria.views.div
-import noria.views.text
-import noria.views.textNodeCT
-import org.jetbrains.noria.CallbackInfo
-import org.jetbrains.noria.Event
-import org.jetbrains.noria.EventInfo
-import org.jetbrains.noria.GraphState
-import org.jetbrains.noria.HostComponentType
-import org.jetbrains.noria.HostProps
-import org.jetbrains.noria.Instance
-import org.jetbrains.noria.JustifyContent
-import org.jetbrains.noria.NElement
-import org.jetbrains.noria.PlatformDriver
-import org.jetbrains.noria.ReconciliationState
-import org.jetbrains.noria.RenderContext
-import org.jetbrains.noria.Update
-import org.jetbrains.noria.View
-import org.jetbrains.noria.button
-import org.jetbrains.noria.capture
-import org.jetbrains.noria.createElement
-import org.jetbrains.noria.fastStringMap
-import org.jetbrains.noria.hbox
-import org.jetbrains.noria.label
-import org.jetbrains.noria.vbox
-import org.jetbrains.noria.x
-import kotlin.test.Test
-import kotlin.test.assertEquals
+import noria.views.*
+import org.jetbrains.noria.*
+import kotlin.test.*
 
 data class Click(val buttonNum: Int, val clickCount: Int) : Event()
 
@@ -63,18 +34,18 @@ class MyMacComponent : View<MyProps>() {
         })
 
         capture {
-            x(NSLayoutConstraint, NSConstraint().apply {
+            x(NSLayoutConstraint) {
                 view1 = v1
                 view2 = v2
-            })
+            }
         }
 
-        x(NSView, NSViewProps().apply {
+        x(NSView) {
             subviews.add(v1)
             if (props.x > 0) {
                 subviews.add(v2)
             }
-        })
+        }
     }
 }
 
@@ -89,7 +60,7 @@ class LabelProps {
 
 class Label : View<LabelProps>() {
     override fun RenderContext.render() {
-        x(textNodeCT, noria.views.TextNodeProps().apply { text = props.text })
+        text(props.text)
     }
 }
 
@@ -127,32 +98,6 @@ class HO : View<HOProps>() {
         val y1 = capture { emit(props.y) }
 
         x(::SplitView, (SplitProps(left = x1, right = y1)))
-    }
-}
-
-data class AppProps(val counter: Int, val h: (Int) -> Unit)
-class AppComponent : View<AppProps>() {
-    override fun RenderContext.render() {
-        vbox {
-            hbox {
-                justifyContent = JustifyContent.center
-
-                button("Click Me Once") {
-                    props.h(props.counter + 1)
-                }
-
-                button("Click Me Twice") {
-                    props.h(props.counter + 1)
-                }
-            }
-
-            repeat(props.counter) { n ->
-                hbox {
-                    label("$n")
-                }
-            }
-        }
-
     }
 }
 
