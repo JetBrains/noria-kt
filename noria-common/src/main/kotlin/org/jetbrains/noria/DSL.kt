@@ -1,6 +1,6 @@
 package org.jetbrains.noria
 
-open class ContainerProps(val children: MutableList<NElement<*>> = mutableListOf()) : Props(), RenderContext {
+open class ContainerProps(val children: MutableList<NElement<*>> = mutableListOf()) : RenderContext {
     override fun <T> reify(e: NElement<T>): NElement<T> {
         error("Should only be called on top-level in render function")
     }

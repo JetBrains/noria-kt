@@ -2,8 +2,8 @@ package org.jetbrains.noria
 
 fun RenderContext.testNodes() {
 
-    ::link with LinkProps("")
-//    "div" with LinkProps("")
+    x(::link, LinkProps(""))
+    //    "div" with LinkProps("")
 
     vbox {
         vbox {
@@ -17,7 +17,7 @@ fun RenderContext.testNodes() {
     }
 }
 
-data class LinkProps(val href: String) : Props()
+data class LinkProps(val href: String)
 
 fun link(props: LinkProps) : NElement<*> {
     TODO()

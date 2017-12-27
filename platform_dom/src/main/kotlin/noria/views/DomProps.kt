@@ -3,7 +3,6 @@ package noria.views
 import org.jetbrains.noria.Event
 import org.jetbrains.noria.NElement
 import org.jetbrains.noria.HostProps
-import org.jetbrains.noria.Props
 import org.jetbrains.noria.RenderContext
 
 class DomEvent : Event() {

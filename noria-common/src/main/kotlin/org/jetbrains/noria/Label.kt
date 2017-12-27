@@ -1,5 +1,7 @@
 package org.jetbrains.noria
 
-data class LabelProps(val text: String) : Props()
+data class LabelProps(val text: String)
 
-fun RenderContext.label(text: String) = labelCT with LabelProps(text)
+fun RenderContext.label(text: String) {
+    x(labelCT, LabelProps(text))
+}

@@ -8,10 +8,14 @@ class TextNodeProps : HostProps() {
 
 val textNodeCT = HostComponentType<TextNodeProps>("textnode")
 
+fun RenderContext.text(value: String, key: String? = null) = x(textNodeCT, key) {
+    text = value
+}
+
 class Label : View<LabelProps>() {
     override fun RenderContext.render() {
-        textNodeCT with TextNodeProps().apply {
+        x(textNodeCT, TextNodeProps().apply {
             text = props.text
-        }
+        })
     }
 }

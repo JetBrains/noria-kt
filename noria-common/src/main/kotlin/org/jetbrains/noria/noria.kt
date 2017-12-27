@@ -5,40 +5,47 @@ package org.jetbrains.noria
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
-open class Props {
-    var key: String? = null
-}
-
 interface RenderContext {
-    infix fun <T> Render<T>.with(props: T) {
-        val key = if (props is Props) props.key else null
-        emit(createElement(props, key))
-    }
-
-    infix fun <T> Constructor<T>.with(props: T) {
-        val key = if (props is Props) props.key else null
-        emit(createElement(props, key))
-    }
-
-    infix fun <T: HostProps> HostComponentType<T>.with(props: T) {
-        val key = if (props is Props) props.key else null
-        emit(createElement(props, key))
-    }
-
-    infix fun <T> PlatformComponentType<T>.with(props: T) {
-        val key = if (props is Props) props.key else null
-        emit(createElement(props, key))
-    }
-
     fun <T> reify(e: NElement<T>): NElement<T>
     fun <T> emit(e: NElement<T>)
 }
 
+fun <T> RenderContext.x(cons: Constructor<T>, props: T, key: String? = null) {
+    emit(createElement(cons, props, key))
+}
 
-fun <T> Render<T>.createElement(props: T, key: String? = null): NElement<T> = NElement.Fun(this, props, key)
-fun <T> Constructor<T>.createElement(props: T, key: String? = null) : NElement<T> = NElement.Class(this, props, key)
-fun <T: HostProps> HostComponentType<T>.createElement(props: T, key: String? = null) : NElement<T> = NElement.HostElement(this, props, key)
-fun <T> PlatformComponentType<T>.createElement(props: T, key: String? = null) : NElement<T> = NElement.PlatformDispatch(this, props, key)
+inline fun <reified T:Any> RenderContext.x(noinline cons: Constructor<T>, key: String? = null, build: T.() -> Unit) {
+    x(cons, T::class.instantiate().apply(build), key)
+}
+
+fun <T> RenderContext.x(render: Render<T>, props: T, key: String? = null) {
+    emit(createElement(render, props, key))
+}
+
+inline fun <reified T:Any> RenderContext.x(noinline render: Render<T>, key: String? = null, build: T.() -> Unit) {
+    x(render, T::class.instantiate().apply(build), key)
+}
+
+fun <T:HostProps> RenderContext.x(host: HostComponentType<T>, props: T, key: String? = null) {
+    emit(createElement(host, props, key))
+}
+
+inline fun <reified T:HostProps> RenderContext.x(host: HostComponentType<T>, key: String? = null, build: T.() -> Unit) {
+    x(host, T::class.instantiate().apply(build), key)
+}
+
+fun <T> RenderContext.x(host: PlatformComponentType<T>, props: T, key: String? = null) {
+    emit(createElement(host, props, key))
+}
+
+inline fun <reified T:Any> RenderContext.x(host: PlatformComponentType<T>, key: String? = null, build: T.() -> Unit) {
+    x(host, T::class.instantiate().apply(build), key)
+}
+
+fun <T> createElement(render: Render<T>, props: T, key: String? = null): NElement<T> = NElement.Fun(render, props, key)
+fun <T> createElement(cons: Constructor<T>, props: T, key: String? = null) : NElement<T> = NElement.Class(cons, props, key)
+fun <T: HostProps> createElement(hct: HostComponentType<T>, props: T, key: String? = null) : NElement<T> = NElement.HostElement(hct, props, key)
+fun <T> createElement(pct: PlatformComponentType<T>, props: T, key: String? = null) : NElement<T> = NElement.PlatformDispatch(pct, props, key)
 
 fun RenderContext.capture(build: RenderContext.() -> Unit) : NElement<*> {
     val capturingContext = RenderContextImpl()
@@ -166,7 +173,7 @@ class ReconciliationState(val graph: GraphState) {
                 e == null -> null
                 e is NElement.HostElement<*> -> reconcileHost(component as HostInstance?, e, env)
                 (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e, env, false)
-                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, graph.platform.resolve(e.type as PlatformComponentType<Any?>).createElement(e.props, e.key), env)
+                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, createElement(graph.platform.resolve(e.type as PlatformComponentType<Any?>), e.props, e.key), env)
                 e is NElement.Reified<*> -> env.lookup(e.id)
                 else -> throw IllegalArgumentException("don't know how to reconcile $e")
             }
@@ -228,7 +235,7 @@ class ReconciliationState(val graph: GraphState) {
         }
         val renderContext = RenderContextImpl()
         val substElement = when (e) {
-            is NElement.Fun<*> -> (e as NElement.Fun<Props>).type(e.props)
+            is NElement.Fun<*> -> (e as NElement.Fun<Any>).type(e.props)
             is NElement.Class<*> -> {
                 if (view == null) {
                     view = e.type() as View<Any?>
@@ -502,7 +509,7 @@ class GraphState(val platform: Platform, val driver: PlatformDriver) {
         val root = RenderContextImpl().run {
             buildRoot()
             val element = createdElements.single()
-            rootCT.createElement(RootProps(id, element))
+            createElement(rootCT, RootProps(id, element))
         }
 
         ReconciliationState(this).mountRoot(root)
@@ -530,7 +537,7 @@ typealias Handler<T> = (T) -> Unit
 
 data class CallbackInfo<in T : Event>(val async: Boolean, val cb: Handler<T>)
 
-abstract class HostProps : Props() {
+abstract class HostProps {
     val constructorParameters = fastStringMap<Any?>()
 
     val componentsMap = fastStringMap<NElement<*>?>()

@@ -4,6 +4,8 @@ data class ButtonProps(
         val title: String,
         val disabled: Boolean,
         val action : () -> Unit
-) : Props()
+)
 
-fun RenderContext.button(title: String, disabled: Boolean = false, action : () -> Unit) = buttonCT with ButtonProps(title, disabled, action)
+fun RenderContext.button(title: String, disabled: Boolean = false, action : () -> Unit) {
+    x(buttonCT, ButtonProps(title, disabled, action))
+}

@@ -7,15 +7,15 @@ val Span = HostComponentType<DomProps>("span")
 val Pre = HostComponentType<DomProps>("pre")
 
 inline fun RenderContext.div(build: DomProps.() -> Unit) {
-    Div with DomProps().apply(build)
+    x(Div, null, build)
 }
 
 inline fun RenderContext.span(build: DomProps.() -> Unit) {
-    Span with DomProps().apply(build)
+    x(Span, DomProps().apply(build))
 }
 
 inline fun RenderContext.pre(build: DomProps.() -> Unit) {
-    Pre with DomProps().apply(build)
+    x(Pre, DomProps().apply(build))
 }
 
 

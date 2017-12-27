@@ -1,7 +1,6 @@
 package noria
 
 import org.jetbrains.noria.JustifyContent
-import org.jetbrains.noria.Props
 import org.jetbrains.noria.GraphState
 import org.jetbrains.noria.RenderContext
 import org.jetbrains.noria.View
@@ -9,9 +8,10 @@ import org.jetbrains.noria.button
 import org.jetbrains.noria.hbox
 import org.jetbrains.noria.label
 import org.jetbrains.noria.vbox
+import org.jetbrains.noria.x
 import kotlin.browser.document
 
-object AppProps : Props()
+class AppProps
 class AppComponent : View<AppProps>() {
     var counter: Int = 10
 
@@ -60,6 +60,6 @@ fun main(args: Array<String>) {
     c = GraphState(DOMPlatform, driver)
 
     c.mount("app") {
-        ::AppComponent with AppProps
+        x(::AppComponent, AppProps())
     }
 }

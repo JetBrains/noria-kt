@@ -1,7 +1,14 @@
 package org.jetbrains.noria
 
+import kotlin.reflect.KClass
+import kotlin.reflect.full.primaryConstructor
+
 actual fun <V> fastStringMap(): MutableMapLike<String, V> = JvmMapLike()
 actual fun <V> fastIntMap(): MutableMapLike<Int, V> = JvmMapLike()
+
+actual fun <T:Any> KClass<T>.instantiate(): T {
+    return primaryConstructor?.call() ?: error("Primary constructor missing")
+}
 
 private class JvmMapLike<K: Any, V>() : MutableMapLike<K, V> {
 

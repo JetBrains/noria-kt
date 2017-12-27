@@ -1,7 +1,14 @@
 package org.jetbrains.noria
 
+import kotlin.reflect.KClass
+
 actual fun <V> fastStringMap(): MutableMapLike<String, V> = JsPlainMapES6Impl()
 actual fun <V> fastIntMap(): MutableMapLike<Int, V> = JsPlainMapES6Impl()
+
+actual fun <T:Any> KClass<T>.instantiate(): T {
+    val cons = js
+    return js("new cons()") as T
+}
 
 private class JsPlainMapES6Impl<K : Any, V> : MutableMapLike<K, V> {
 
