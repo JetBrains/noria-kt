@@ -18,11 +18,11 @@ open class DomProps : HostProps(), RenderContext {
     // Events
     var click by handler<DomEvent>()
 
-    override fun <T : Props> reify(e: NElement<T>): NElement<T> {
+    override fun <T> reify(e: NElement<T>): NElement<T> {
         error("Should only be called on top level in render function")
     }
 
-    override fun <T : Props> emit(e: NElement<T>) {
+    override fun <T> emit(e: NElement<T>) {
         children.add(e)
     }
 }

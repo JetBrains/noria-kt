@@ -2,7 +2,7 @@ package org.jetbrains.noria
 
 open class Platform {
     val registry: MutableMap<PlatformComponentType<*>, Constructor<*>> = mutableMapOf()
-    fun<T: Props> resolve(platformComponentType: PlatformComponentType<T>): Constructor<T> =
+    fun<T> resolve(platformComponentType: PlatformComponentType<T>): Constructor<T> =
             (registry[platformComponentType] as? Constructor<T>)
                     ?: error("platform component type $platformComponentType is not implemented for $this platform")
     fun<T: Props> register(platformComponentType: PlatformComponentType<T>, c: Constructor<T>) {

@@ -10,31 +10,35 @@ open class Props {
 }
 
 interface RenderContext {
-    infix fun <T: Props> Render<T>.with(props: T) {
-        emit(createElement(props))
+    infix fun <T> Render<T>.with(props: T) {
+        val key = if (props is Props) props.key else null
+        emit(createElement(props, key))
     }
 
-    infix fun <T: Props> Constructor<T>.with(props: T) {
-        emit(createElement(props))
+    infix fun <T> Constructor<T>.with(props: T) {
+        val key = if (props is Props) props.key else null
+        emit(createElement(props, key))
     }
 
     infix fun <T: HostProps> HostComponentType<T>.with(props: T) {
-        emit(createElement(props))
+        val key = if (props is Props) props.key else null
+        emit(createElement(props, key))
     }
 
-    infix fun <T: Props> PlatformComponentType<T>.with(props: T) {
-        emit(createElement(props))
+    infix fun <T> PlatformComponentType<T>.with(props: T) {
+        val key = if (props is Props) props.key else null
+        emit(createElement(props, key))
     }
 
-    fun <T : Props> reify(e: NElement<T>): NElement<T>
-    fun <T: Props> emit(e: NElement<T>)
+    fun <T> reify(e: NElement<T>): NElement<T>
+    fun <T> emit(e: NElement<T>)
 }
 
 
-fun <T: Props> Render<T>.createElement(props: T): NElement<T> = NElement.Fun(this, props)
-fun <T: Props> Constructor<T>.createElement(props: T) : NElement<T> = NElement.Class(this, props)
-fun <T: HostProps> HostComponentType<T>.createElement(props: T) : NElement<T> = NElement.HostElement(this, props)
-fun <T: Props> PlatformComponentType<T>.createElement(props: T) : NElement<T> = NElement.PlatformDispatch(this, props)
+fun <T> Render<T>.createElement(props: T, key: String? = null): NElement<T> = NElement.Fun(this, props, key)
+fun <T> Constructor<T>.createElement(props: T, key: String? = null) : NElement<T> = NElement.Class(this, props, key)
+fun <T: HostProps> HostComponentType<T>.createElement(props: T, key: String? = null) : NElement<T> = NElement.HostElement(this, props, key)
+fun <T> PlatformComponentType<T>.createElement(props: T, key: String? = null) : NElement<T> = NElement.PlatformDispatch(this, props, key)
 
 fun RenderContext.capture(build: RenderContext.() -> Unit) : NElement<*> {
     val capturingContext = RenderContextImpl()
@@ -46,14 +50,14 @@ class RenderContextImpl() : RenderContext {
     internal val reifiedElements: MutableList<NElement.Reified<*>> = mutableListOf()
     val createdElements: MutableList<NElement<*>> = mutableListOf()
 
-    override fun <T : Props> reify(e: NElement<T>): NElement<T> {
+    override fun <T> reify(e: NElement<T>): NElement<T> {
         createdElements.remove(e)
         return NElement.Reified(Env.nextVar++, e).apply {
             reifiedElements.add(this)
         }
     }
 
-    override fun <T: Props> emit(e: NElement<T>) {
+    override fun <T> emit(e: NElement<T>) {
         createdElements.add(e)
     }
 }
@@ -62,7 +66,7 @@ interface PlatformDriver {
     fun applyUpdates(updates: List<Update>)
 }
 
-abstract class View<T : Props> {
+abstract class View<T> {
     val props: T get() = _props ?: error("Props are not initialized yet")
     internal var _props: T? = null
     internal lateinit var context: GraphState
@@ -82,16 +86,20 @@ abstract class View<T : Props> {
 typealias Render<T> = (T) -> NElement<*>
 typealias Constructor<T> = () -> View<T>
 
-interface ComponentType<T : Props>
+interface ComponentType<T>
 data class HostComponentType<T : HostProps>(val type: String) : ComponentType<T>
-class PlatformComponentType<T : Props> : ComponentType<T>
+class PlatformComponentType<T> : ComponentType<T>
 
-sealed class NElement<T : Props>(val props: T, open val type: Any) {
-    internal class Fun<T : Props>(override val type: Render<T>, props: T) : NElement<T>(props, type)
-    internal class Class<T : Props>(override val type: Constructor<T>, props: T) : NElement<T>(props, type)
-    internal class HostElement<T : HostProps>(override val type: HostComponentType<T>, props: T) : NElement<T>(props, type)
-    internal class PlatformDispatch<T : Props>(override val type: PlatformComponentType<T>, props: T) : NElement<T>(props, type)
-    internal class Reified<T : Props>(val id: Int, val e: NElement<T>) : NElement<T>(e.props, e.type)
+sealed class NElement<T>(val props: T, open val type: Any, open var key: String?) {
+    internal class Fun<T>(override val type: Render<T>, props: T, key: String?) : NElement<T>(props, type, key)
+    internal class Class<T>(override val type: Constructor<T>, props: T, key: String?) : NElement<T>(props, type, key)
+    internal class HostElement<T : HostProps>(override val type: HostComponentType<T>, props: T, key: String?) : NElement<T>(props, type, key)
+    internal class PlatformDispatch<T>(override val type: PlatformComponentType<T>, props: T, key: String?) : NElement<T>(props, type, key)
+    internal class Reified<T>(val id: Int, val e: NElement<T>) : NElement<T>(e.props, e.type, null) {
+        override var key: String?
+            get() = e.key
+            set(value) {e.key = value}
+    }
 }
 
 sealed class Update {
@@ -158,7 +166,7 @@ class ReconciliationState(val graph: GraphState) {
                 e == null -> null
                 e is NElement.HostElement<*> -> reconcileHost(component as HostInstance?, e, env)
                 (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e, env, false)
-                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, NElement.Class((graph.platform.resolve(e.type as PlatformComponentType<*>) as Constructor<Props>), e.props), env)
+                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, graph.platform.resolve(e.type as PlatformComponentType<Any?>).createElement(e.props, e.key), env)
                 e is NElement.Reified<*> -> env.lookup(e.id)
                 else -> throw IllegalArgumentException("don't know how to reconcile $e")
             }
@@ -166,12 +174,12 @@ class ReconciliationState(val graph: GraphState) {
     private fun reconcileByKeys(byKeys: MutableMapLike<String, Instance>, coll: Collection<NElement<*>>, env: Env): List<Instance> {
         val newKeysSet = fastStringMap<String>()
         for (e in coll) {
-            newKeysSet[e.props.key!!] = e.props.key!!
+            newKeysSet[e.key!!] = e.key!!
         }
 
         val reusableGarbageByType = fastStringMap<MutableList<Instance>>()
         byKeys.forEach { _, v ->
-            if (!newKeysSet.containsKey(v.element.props.key!!) && v.backrefs.size == 1) {
+            if (!newKeysSet.containsKey(v.element.key!!) && v.backrefs.size == 1) {
                 var list = reusableGarbageByType[v.element.type.toString()]
                 if (list == null) {
                     list = mutableListOf()
@@ -182,7 +190,7 @@ class ReconciliationState(val graph: GraphState) {
         }
 
         return coll.mapNotNull {
-            var target: Instance? = byKeys[it.props.key!!]
+            var target: Instance? = byKeys[it.key!!]
             if (target == null) {
                 val g = reusableGarbageByType[it.type.toString()]
                 if (g != null && !g.isEmpty()) {
@@ -197,7 +205,7 @@ class ReconciliationState(val graph: GraphState) {
     private fun assignKeys(elements: List<NElement<*>>) {
         val indices = fastStringMap<Int>()
         for (element in elements) {
-            if (element.props.key == null) {
+            if (element.key == null) {
                 val typeStr = element.type.toString()
                 val i = indices[typeStr]
                 val index = if (i == null) {
@@ -206,7 +214,7 @@ class ReconciliationState(val graph: GraphState) {
                 } else {
                     i
                 }
-                element.props.key = (element.type to index).toString()
+                element.key = (element.type to index).toString()
                 indices[typeStr] = index + 1
             }
         }
@@ -216,14 +224,14 @@ class ReconciliationState(val graph: GraphState) {
         var view = when {
             userComponent == null -> null
             userComponent.element.type != e.type -> null
-            else -> userComponent.view as View<Props>?
+            else -> userComponent.view as View<Any?>?
         }
         val renderContext = RenderContextImpl()
         val substElement = when (e) {
             is NElement.Fun<*> -> (e as NElement.Fun<Props>).type(e.props)
             is NElement.Class<*> -> {
                 if (view == null) {
-                    view = e.type() as View<Props>
+                    view = e.type() as View<Any?>
                 }
 
                 view.run {
@@ -254,7 +262,7 @@ class ReconciliationState(val graph: GraphState) {
         val newSubst = reconcileImpl(userComponent?.subst, substElement, newEnv)
         val newByKeys = fastStringMap<Instance>()
         for (c in newComponents) {
-            newByKeys[c.element.props.key!!] = c
+            newByKeys[c.element.key!!] = c
         }
 
         val result = userComponent?.apply {
@@ -454,7 +462,7 @@ class ReconciliationState(val graph: GraphState) {
     private fun reconcileList(node: Int, attr: String, components: List<Instance>, elements: List<NElement<*>>, env: Env): List<Instance> {
         val componentsByKeys = fastStringMap<Instance>()
         for (c in components) {
-            componentsByKeys[c.element.props.key!!] = c
+            componentsByKeys[c.element.key!!] = c
         }
         val reconciledList = reconcileByKeys(componentsByKeys, elements, env)
         updateOrder(node, attr, components.mapNotNull { it.node }, reconciledList.mapNotNull { it.node })
