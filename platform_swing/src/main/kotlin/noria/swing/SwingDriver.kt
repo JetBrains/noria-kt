@@ -4,7 +4,7 @@ import noria.*
 import javax.swing.*
 import kotlin.reflect.full.*
 
-class SwingDriver(val events: (EventInfo) -> Unit) : Host {
+class SwingDriver : Host {
     private val roots = mutableMapOf<String?, JPanel>()
     private val nodes = mutableMapOf<Int, Any>()
     private val callbacks = mutableMapOf<Pair<Int, String>, Any?>()
