@@ -33,9 +33,7 @@ class DemoAppComponent : View<DemoAppProps>() {
             }
 
             repeat(counter) { n ->
-                hbox {
-                    label("Item #${(n + 1).toString().padStart(2)}")
-                }
+                label("Item #${(n + 1).toString().padStart(2)}")
             }
         }
 

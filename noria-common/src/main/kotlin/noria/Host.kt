@@ -11,6 +11,7 @@ interface Host {
 sealed class Update {
     data class MakeNode(val node: Int, val type: String, val parameters: MutableMapLike<String, Any?>) : Update()
     data class SetAttr(val node: Int, val attr: String, val value: Any?) : Update()
+    data class SetNodeAttr(val node: Int, val attr: String, val value: Int?) : Update()
     data class SetCallback(val node: Int, val attr: String, val async: Boolean) : Update()
     data class RemoveCallback(val node: Int, val attr: String) : Update()
     data class Add(val node: Int, val attr: String, val value: Any?, val index: Int) : Update()

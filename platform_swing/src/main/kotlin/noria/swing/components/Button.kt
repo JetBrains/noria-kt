@@ -11,7 +11,7 @@ class nButtonProps : HostProps() {
     var enabled: Boolean by value()
 }
 
-val nButton = HostComponentType<nButtonProps>("JButton")
+val nButton = HostComponentType<nButtonProps>("javax.swing.JButton")
 
 class NJButton : View<ButtonProps>() {
     override fun RenderContext.render() {

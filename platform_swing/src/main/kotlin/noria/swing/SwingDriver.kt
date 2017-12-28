@@ -9,7 +9,7 @@ import kotlin.reflect.full.*
 
 class SwingDriver(val events: (EventInfo) -> Unit) : Host {
     private val roots = mutableMapOf<String?, JPanel>()
-    private val nodes = mutableMapOf<Int, JComponent>()
+    private val nodes = mutableMapOf<Int, Any>()
     private val callbacks = mutableMapOf<Pair<Int, String>, EventListener>()
 
     override fun applyUpdates(updates: List<Update>) {
@@ -18,13 +18,13 @@ class SwingDriver(val events: (EventInfo) -> Unit) : Host {
             when (u) {
                 is Update.MakeNode -> {
                     if (nodes[u.node] != null) error("Update $u. Node already exists")
-                    val newElement: JComponent = when(u.type) {
+                    val newElement = when(u.type) {
                         "root" -> {
                             val id = u.parameters["id"] as? String
                             roots[id] ?: error("Root $id has not been registered")
                         }
 
-                        else -> Class.forName("javax.swing.${u.type}").newInstance() as JComponent // TODO Reflection cache
+                        else -> Class.forName(u.type).newInstance() // TODO Reflection cache
                     }
 
                     nodes[u.node] = newElement
@@ -33,6 +33,12 @@ class SwingDriver(val events: (EventInfo) -> Unit) : Host {
                 is Update.SetAttr -> {
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                     node::class.memberFunctions.find { it.name == "set${u.attr.capitalize()}" }?.call(node, u.value)
+                }
+
+                is Update.SetNodeAttr -> {
+                    val node = nodes[u.node] ?: error("Update $u. Cannot find node")
+                    val v = nodes[u.value]
+                    node::class.memberFunctions.find { it.name == "set${u.attr.capitalize()}" }?.call(node, v)
                 }
 
                 is Update.SetCallback -> {
@@ -70,13 +76,13 @@ class SwingDriver(val events: (EventInfo) -> Unit) : Host {
                 is Update.Add -> {
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                     val child = nodes[u.value as Int] ?: error("Update $u. Cannot find child")
-                    node.add(child, u.index)
+                    (node as JComponent).add(child as JComponent, u.index)
                 }
 
                 is Update.Remove -> {
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                     val child = nodes[u.value as Int] ?: error("Update $u. Cannot find child")
-                    node.remove(child)
+                    (node as JComponent).remove(child as JComponent)
                 }
 
                 is Update.DestroyNode -> {

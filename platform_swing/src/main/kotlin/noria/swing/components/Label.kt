@@ -7,7 +7,7 @@ class LabelNodeProps : HostProps() {
     var text: String by value()
 }
 
-val labelNodeCT = HostComponentType<LabelNodeProps>("JLabel")
+val labelNodeCT = HostComponentType<LabelNodeProps>("javax.swing.JLabel")
 
 class Label : View<LabelProps>() {
     override fun RenderContext.render() {

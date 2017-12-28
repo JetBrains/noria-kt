@@ -6,17 +6,27 @@ import noria.components.Container
 import java.awt.*
 
 class PanelProps : HostProps() {
-    var layout by value<LayoutManager>(true)
+    var layout: NElement<out LayoutProps> by element(true)
     var children by elementList<MutableList<NElement<*>>>()
 }
-val Panel = HostComponentType<PanelProps>("JPanel")
+
+val Panel = HostComponentType<PanelProps>("javax.swing.JPanel")
+
+open class LayoutProps : HostProps()
+
+class FlowLayoutProps : LayoutProps() {
+    var alignment: Int by value()
+}
+
+val FlowLayoutCT = HostComponentType<FlowLayoutProps>("java.awt.FlowLayout")
+val VerticalFlowLayoutCT = HostComponentType<FlowLayoutProps>("noria.swing.components.VerticalFlowLayout")
 
 class FlexBox : Container<BoxProps>() {
     override fun RenderContext.render() {
         x(Panel) {
             if (props.flexDirection == FlexDirection.column) {
-                layout = VerticalFlowLayout().apply {
-                    when(props.justifyContent ?: JustifyContent.start) {
+                layout = createElement(VerticalFlowLayoutCT, FlowLayoutProps().apply {
+                    when (props.justifyContent ?: JustifyContent.start) {
                         JustifyContent.center -> {
                             alignment = VerticalFlowLayout.MIDDLE
                         }
@@ -43,11 +53,10 @@ class FlexBox : Container<BoxProps>() {
                         JustifyContent.safeCenter -> TODO()
                         JustifyContent.unsafeCenter -> TODO()
                     }
-                }
-            }
-            else {
-                layout = FlowLayout().apply {
-                    when(props.justifyContent ?: JustifyContent.start) {
+                })
+            } else {
+                layout = createElement(FlowLayoutCT, FlowLayoutProps().apply {
+                    when (props.justifyContent ?: JustifyContent.start) {
                         JustifyContent.center -> {
                             alignment = FlowLayout.CENTER
                         }
@@ -74,7 +83,7 @@ class FlexBox : Container<BoxProps>() {
                         JustifyContent.safeCenter -> TODO()
                         JustifyContent.unsafeCenter -> TODO()
                     }
-                }
+                })
             }
 
             children.addAll(props.children)

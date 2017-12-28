@@ -49,7 +49,7 @@ class ReconciliationState(val graph: GraphState) {
                         supply(Update.Add(r.referer.node!!, r.attr, newNode, r.index))
                     }
                     is AttrReference -> {
-                        supply(Update.SetAttr(r.referer.node!!, r.attr, newNode))
+                        supply(Update.SetNodeAttr(r.referer.node!!, r.attr, newNode))
                     }
                 }
             }
@@ -272,7 +272,7 @@ class ReconciliationState(val graph: GraphState) {
             val newComponent = reconcileImpl(oldComponent, element, env)
             componentsMap[attr] = newComponent
             if (oldComponent?.node != newComponent?.node) {
-                supply(Update.SetAttr(node, attr, newComponent?.node))
+                supply(Update.SetNodeAttr(node, attr, newComponent?.node))
             }
         }
 
