@@ -57,7 +57,7 @@ abstract class View<T> {
     internal lateinit var instance: UserInstance
 
     open fun shouldUpdate(newProps: T): Boolean {
-        return true // TODO props != newProps
+        return props != newProps
     }
 
     fun forceUpdate() {
