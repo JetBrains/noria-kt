@@ -1,6 +1,8 @@
 package noria.swing
 
 import noria.*
+import noria.swing.components.ActionEvent
+import java.awt.event.*
 import java.util.*
 import javax.swing.*
 import kotlin.reflect.full.*
@@ -30,35 +32,39 @@ class SwingDriver(val events: (EventInfo) -> Unit) : Host {
 
                 is Update.SetAttr -> {
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
-                    node::class.declaredMemberFunctions.find { it.name == "set${u.attr.capitalize()}" }?.call(node, u.value)
+                    node::class.memberFunctions.find { it.name == "set${u.attr.capitalize()}" }?.call(node, u.value)
                 }
 
                 is Update.SetCallback -> {
-/*
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                     callbacks[u.node to u.attr]?.let {
                         error("Update $u. Callback is aready set")
                     }
 
-                    val listener = object : EventListener {
-                        override fun handleEvent(event: Event) {
-                            events(EventInfo(u.node, u.attr, DomEvent() */
-/*TODO*//*
-))
+                    val listener: ActionListener
+                    when(u.attr) {
+                        "actionListener" -> {
+                            listener = ActionListener {
+                                events(EventInfo(u.node, u.attr, ActionEvent()))
+                            }
+                            node::class.memberFunctions.find { it.name == "addActionListener" }?.call(node, listener)
                         }
+                        else -> error("Unknown event")
                     }
-                    (node as JComponent).addEventListener(u.attr, listener)
+
                     callbacks[u.node to u.attr] = listener
-*/
                 }
 
                 is Update.RemoveCallback -> {
-/*
                     val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                     callbacks[u.node to u.attr]?.let {
-                        (node as Element).removeEventListener(u.attr, it)
+                        when(u.attr) {
+                            "actionListner" -> {
+                                node::class.memberFunctions.find { it.name == "removeActionListener" }?.call(node, it)
+                            }
+                            else -> error("Unknown event")
+                        }
                     } ?: error("Update $u. Callback is not set")
-*/
                 }
 
                 is Update.Add -> {

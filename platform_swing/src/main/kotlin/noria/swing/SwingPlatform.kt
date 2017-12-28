@@ -7,11 +7,9 @@ import noria.swing.components.*
 object SwingPlatform : Platform() {
     init {
         register(Root, ::SwingRoot)
-/*
         register(HBox, ::FlexBox)
         register(VBox, ::FlexBox)
-*/
         register(Label, ::Label)
-//        register(Button, ::Button)
+        register(Button, ::NJButton)
     }
 }

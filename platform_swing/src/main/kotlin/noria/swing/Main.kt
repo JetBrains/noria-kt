@@ -2,6 +2,7 @@ package noria.swing
 
 import noria.*
 import noria.components.*
+import noria.demo.*
 import javax.swing.*
 
 fun main(args: Array<String>) {
@@ -18,7 +19,26 @@ fun main(args: Array<String>) {
     c = GraphState(SwingPlatform, driver)
 
     c.mount("app") {
-        label("Hello world")
+        x(::DemoAppComponent, DemoAppProps())
+
+/*
+        vbox {
+            hbox {
+                label("L1")
+                label("L2")
+                label("L3")
+            }
+            hbox {
+                label("K1")
+                label("K2")
+                label("K3")
+            }
+
+            button("Click me!") {
+                println("Clicked!!")
+            }
+        }
+*/
     }
 
     frame.contentPane = content

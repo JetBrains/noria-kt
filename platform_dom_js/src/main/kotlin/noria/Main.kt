@@ -1,46 +1,7 @@
 package noria
 
-import noria.components.*
+import noria.demo.*
 import kotlin.browser.*
-
-class AppProps
-class AppComponent : View<AppProps>() {
-    var counter: Int = 10
-
-    override fun RenderContext.render() {
-        vbox {
-            hbox {
-                justifyContent = JustifyContent.center
-
-                button("More") {
-                    counter++
-                    forceUpdate()
-                }
-
-                button("Less") {
-                    counter--
-                    forceUpdate()
-                }
-
-                button("This one you won't click", true) {
-                    
-                }
-            }
-
-            hbox {
-                justifyContent = JustifyContent.center
-                label("Counter = ${counter}")
-            }
-
-            repeat(counter) { n ->
-                hbox {
-                    label("Item #${(n + 1).toString().padStart(2)}")
-                }
-            }
-        }
-
-    }
-}
 
 fun main(args: Array<String>) {
     lateinit var c: GraphState
@@ -52,6 +13,6 @@ fun main(args: Array<String>) {
     c = GraphState(DOMPlatform, driver)
 
     c.mount("app") {
-        x(::AppComponent, AppProps())
+        x(::DemoAppComponent, DemoAppProps())
     }
 }
