@@ -15,7 +15,7 @@ class NJButton : View<ButtonProps>() {
                 set(JButton::setEnabled, false)
             }
 
-            set<ActionListener>(JButton::addActionListener, ActionListener {
+            listen<ActionListener>(JButton::addActionListener, ActionListener {
                 props.action()
             })
         }
