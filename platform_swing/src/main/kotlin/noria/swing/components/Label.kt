@@ -2,17 +2,14 @@ package noria.swing.components
 
 import noria.*
 import noria.components.*
+import javax.swing.*
 
-class LabelNodeProps : HostProps() {
-    var text: String by value()
-}
-
-val labelNodeCT = HostComponentType<LabelNodeProps>("javax.swing.JLabel")
+val nLabel = beanHostCompnentType<JLabel>()
 
 class Label : View<LabelProps>() {
     override fun RenderContext.render() {
-        x(labelNodeCT) {
-            text = props.text
+        x(nLabel) {
+            set(JLabel::setText, props.text)
         }
     }
 }
