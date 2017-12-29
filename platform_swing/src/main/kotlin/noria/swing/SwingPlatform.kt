@@ -3,13 +3,36 @@ package noria.swing
 import noria.*
 import noria.components.*
 import noria.swing.components.*
+import java.awt.event.*
+import javax.swing.*
+import kotlin.reflect.*
 
 object SwingPlatform : Platform() {
     init {
         register(Root, ::SwingRoot)
         register(HBox, ::FlexBox)
         register(VBox, ::FlexBox)
-        register(Label, ::Label)
-        register(Button, ::NJButton)
+
+        register(Label, JLabel::class) {
+            set(JLabel::setText, it.text)
+        }
+
+        register(Button, JButton::class) { props ->
+            set(JButton::setText, props.title)
+
+            if (props.disabled) {
+                set(JButton::setEnabled, false)
+            }
+
+            listen<ActionListener>(JButton::addActionListener, ActionListener {
+                props.action()
+            })
+        }
+    }
+
+    private fun<Props, Bean:Any> register(pct: PlatformComponentType<Props>, bean: KClass<Bean>, build: BeanHostProps<Bean>.(Props) -> Unit) {
+        return register(pct) {
+            beanView(bean, build)
+        }
     }
 }

@@ -14,4 +14,16 @@ class BeanHostProps<T: Any> : HostProps() {
     }
 }
 
-inline fun <reified T: Any> beanHostCompnentType() = HostComponentType<BeanHostProps<T>>(T::class.qualifiedName!!)
+fun <T: Any> beanHostCompnentType(klass: KClass<T>) = HostComponentType<BeanHostProps<T>>(klass.qualifiedName!!)
+
+class ManagedBeanView<B:Any, Props>(val type: HostComponentType<BeanHostProps<B>>, val build: BeanHostProps<B>.(Props) -> Unit) : View<Props>() {
+    override fun RenderContext.render() {
+        val bhp = BeanHostProps<B>().apply {
+            build(props)
+        }
+
+        x(type, bhp)
+    }
+}
+
+fun <B: Any, Props> beanView(klass: KClass<B>, build: BeanHostProps<B>.(Props) -> Unit) = ManagedBeanView(beanHostCompnentType(klass), build)

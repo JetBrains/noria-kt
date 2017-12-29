@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
 
     JFrame().apply {
         contentPane = content
-        pack()
+        setSize(800, 600)
         isVisible = true
     }
 }
