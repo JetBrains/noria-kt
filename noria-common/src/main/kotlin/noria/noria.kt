@@ -3,8 +3,6 @@
 package noria
 
 import noria.utils.*
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
 
 
 class RenderContextImpl() : RenderContext {
@@ -396,10 +394,29 @@ class GraphState(val platform: Platform, val driver: Host) {
     private var nextNode: Int = 0
     internal val callbacksTable: MutableMapLike<Int, MutableMapLike<String, CallbackInfo<*>>> = fastIntMap()
 
+    private val updateQueue : MutableMapLike<Int, UserInstance> = fastIntMap()
+
     internal fun makeNode() = nextNode++
 
     fun forceUpdate(c: UserInstance) {
-        ReconciliationState(this).forceUpdate(c)
+        c.node?.let {
+            synchronized(updateQueue) {
+                updateQueue[it] = c
+
+                scheduleOnce {
+                    drainUpdateQueue()
+                }
+            }
+        }
+    }
+
+    private fun drainUpdateQueue() {
+        synchronized(updateQueue) {
+            updateQueue.forEach { _, instance ->
+                ReconciliationState(this).forceUpdate(instance)
+            }
+            updateQueue.clear()
+        }
     }
 
     fun handleEvent(e: EventInfo) {

@@ -9,6 +9,7 @@ interface MutableMapLike<K : Any, V> {
     fun containsKey(key: K): Boolean
     fun forEach(handler: (K, V) -> Unit)
     fun size(): Int
+    fun clear()
 }
 
 expect fun <V> fastStringMap(): MutableMapLike<String, V>

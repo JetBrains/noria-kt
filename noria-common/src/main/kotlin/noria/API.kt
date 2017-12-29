@@ -1,6 +1,8 @@
 package noria
 
 import noria.utils.*
+import kotlin.properties.*
+import kotlin.reflect.*
 
 interface RenderContext {
     fun <T> reify(e: NElement<T>): NElement<T>
@@ -65,6 +67,20 @@ abstract class View<T> {
     }
 
     abstract fun RenderContext.render()
+
+    fun <V> managedState(initial: V) : ReadWriteProperty<View<T>, V> = ManagedProperty(initial)
+    private class ManagedProperty<T, V>(initial: V) : ReadWriteProperty<View<T>, V> {
+        private var v: V = initial
+
+        override fun getValue(thisRef: View<T>, property: KProperty<*>): V {
+            return v
+        }
+
+        override fun setValue(thisRef: View<T>, property: KProperty<*>, value: V) {
+            v = value
+            thisRef.forceUpdate()
+        }
+    }
 }
 
 typealias Render<T> = (T) -> NElement<*>

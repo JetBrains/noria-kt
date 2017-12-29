@@ -55,4 +55,8 @@ private class JvmMapLike<K: Any, V>() : MutableMapLike<K, V> {
     override fun hashCode(): Int {
         return map.hashCode()
     }
+
+    override fun clear() {
+        map.clear()
+    }
 }

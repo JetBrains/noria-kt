@@ -5,7 +5,7 @@ import noria.components.*
 
 class DemoAppProps
 class DemoAppComponent : View<DemoAppProps>() {
-    var counter: Int = 10
+    var counter: Int by managedState(10)
 
     override fun RenderContext.render() {
         vbox {
@@ -14,12 +14,10 @@ class DemoAppComponent : View<DemoAppProps>() {
 
                 button("More") {
                     counter++
-                    forceUpdate()
                 }
 
                 button("Less") {
                     counter--
-                    forceUpdate()
                 }
 
                 button("This one you won't click", true) {
@@ -33,7 +31,9 @@ class DemoAppComponent : View<DemoAppProps>() {
             }
 
             repeat(counter) { n ->
-                label("Item #${(n + 1).toString().padStart(2)}")
+                hbox {
+                    label("Item #${(n + 1).toString().padStart(2)}")
+                }
             }
         }
 

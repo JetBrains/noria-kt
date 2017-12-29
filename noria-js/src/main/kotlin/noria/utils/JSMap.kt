@@ -43,4 +43,8 @@ private class JsPlainMapES6Impl<K : Any, V> : MutableMapLike<K, V> {
             handler(k, v)
         }
     }
+
+    override fun clear() {
+        storage.clear()
+    }
 }
