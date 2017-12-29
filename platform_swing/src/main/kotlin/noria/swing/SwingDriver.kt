@@ -11,7 +11,6 @@ class SwingDriver : Host {
 
     override fun applyUpdates(updates: List<Update>) {
         for (u in updates) {
-            println("Applying update: $u")
             when (u) {
                 is Update.MakeNode -> {
                     if (nodes[u.node] != null) error("Update $u. Node already exists")
