@@ -19,10 +19,7 @@ object SwingPlatform : Platform() {
 
         register(Button, JButton::class) { props ->
             set(JButton::setText, props.title)
-
-            if (props.disabled) {
-                set(JButton::setEnabled, false)
-            }
+            set(JButton::setEnabled, !props.disabled)
 
             listen<ActionListener>(JButton::addActionListener, ActionListener {
                 props.action()

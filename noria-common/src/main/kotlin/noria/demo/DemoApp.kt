@@ -20,7 +20,7 @@ class DemoAppComponent : View<DemoAppProps>() {
                     counter--
                 }
 
-                button("This one you won't click", true) {
+                button("This one you won't click unless counter is odd", counter % 2 == 0) {
 
                 }
             }
