@@ -1,0 +1,80 @@
+buildscript {
+    apply from: 'versions.gradle'
+
+    repositories {
+        maven { url "https://dl.bintray.com/kotlin/kotlin-dev" }
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        maven { url "https://dl.bintray.com/kotlin/kotlin-dev" }
+        mavenCentral()
+        jcenter()
+    }
+
+    ext.applyKotlinJS = {
+        apply plugin: 'kotlin-platform-js'
+
+        dependencies {
+            compile "org.jetbrains.kotlin:kotlin-stdlib-js:$kotlin_version"
+            testCompile "org.jetbrains.kotlin:kotlin-test-js:$kotlin_version"
+        }
+
+        compileKotlin2Js {
+            kotlinOptions.metaInfo = true
+            kotlinOptions.sourceMap = true
+//            kotlinOptions.moduleKind = 'commonjs'
+            kotlinOptions.main = 'call'
+            kotlinOptions.typedArrays = true
+        }
+
+        compileTestKotlin2Js {
+            kotlinOptions.metaInfo = true
+            kotlinOptions.sourceMap = true
+  //          kotlinOptions.moduleKind = 'commonjs'
+            kotlinOptions.main = 'call'
+            kotlinOptions.typedArrays = true
+        }
+
+        kotlin { experimental.coroutines = 'enable' }
+    }
+
+    ext.applyKotlinCommon = {
+        apply plugin: 'kotlin-platform-common'
+
+        dependencies {
+            compile "org.jetbrains.kotlin:kotlin-stdlib-common:$kotlin_version"
+            testCompile "org.jetbrains.kotlin:kotlin-test-annotations-common:$kotlin_version"
+            testCompile "org.jetbrains.kotlin:kotlin-test-common:$kotlin_version"
+        }
+
+        kotlin { experimental.coroutines = 'enable' }
+    }
+
+    ext.applyKotlinJVM = {
+        apply plugin: 'java'
+        apply plugin: 'kotlin-platform-jvm'
+        apply plugin: "jacoco"
+
+        test { finalizedBy jacocoTestReport }
+
+        dependencies {
+            compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+            compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
+            compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
+
+            testCompile "junit:junit:4.12"
+            testCompile "org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version"
+            testCompile "org.jetbrains.kotlin:kotlin-test:$kotlin_version"
+        }
+
+        kotlin { experimental.coroutines = 'enable' }
+    }
+}
