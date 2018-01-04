@@ -1,15 +1,12 @@
 package noria
 
-import noria.views.DomEvent
 import noria.EventInfo
 import noria.Host
 import noria.Update
-import org.w3c.dom.Element
-import org.w3c.dom.Node
-import org.w3c.dom.Text
+import noria.views.*
+import org.w3c.dom.*
+import org.w3c.dom.events.*
 import org.w3c.dom.events.Event
-import org.w3c.dom.events.EventListener
-import org.w3c.dom.get
 import kotlin.browser.document
 
 private fun Element.insertChildAtIndex(child: Node, index: Int) {
@@ -75,7 +72,16 @@ class JSDriver(val events: (EventInfo) -> Unit) : Host {
 
                     val listener = object : EventListener {
                         override fun handleEvent(event: Event) {
-                            events(EventInfo(u.node, u.attr, DomEvent() /*TODO*/))
+                            console.log(event)
+                            events(EventInfo(u.node, u.attr, when(event.type) {
+                                "change", "keypress" -> {
+                                    ChangeEvent(event.target.asDynamic().value)
+                                }
+
+                            /*TODO*/
+
+                                else -> DomEvent()
+                            }))
                         }
                     }
                     (node as Element).addEventListener(u.attr, listener)

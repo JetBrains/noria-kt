@@ -11,5 +11,6 @@ object DOMPlatform : Platform() {
         register(VBox, ::FlexBox)
         register(Label, ::Label)
         register(Button, ::Button)
+        register(TextField, ::TextField)
     }
 }

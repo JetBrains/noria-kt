@@ -25,6 +25,11 @@ object SwingPlatform : Platform() {
                 props.action()
             })
         }
+
+        register(TextField, JTextField::class) { props ->
+            set(JTextField::setText, props.bind.getter.call())
+            set(JTextField::setEnabled, !props.disabled)
+        }
     }
 
     private fun<Props, Bean:Any> register(pct: PlatformComponentType<Props>, bean: KClass<Bean>, build: BeanHostProps<Bean>.(Props) -> Unit) {

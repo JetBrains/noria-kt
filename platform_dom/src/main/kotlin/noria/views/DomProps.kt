@@ -5,9 +5,9 @@ import noria.NElement
 import noria.HostProps
 import noria.RenderContext
 
-class DomEvent : Event() {
+class DomEvent : Event()
 
-}
+class ChangeEvent(val newValue: String?) : Event()
 
 open class DomProps : HostProps(), RenderContext {
     var style: String by value()
@@ -16,6 +16,7 @@ open class DomProps : HostProps(), RenderContext {
 
     // Events
     var click by handler<DomEvent>()
+    var change by handler<ChangeEvent>()
 
     override fun <T> reify(e: NElement<T>): NElement<T> {
         error("Should only be called on top level in render function")

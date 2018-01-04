@@ -6,6 +6,7 @@ import noria.components.*
 class DemoAppProps
 class DemoAppComponent : View<DemoAppProps>() {
     var counter: Int by managedState(10)
+    var name: String by managedState("")
 
     override fun RenderContext.render() {
         vbox {
@@ -22,6 +23,14 @@ class DemoAppComponent : View<DemoAppProps>() {
 
                 button("This one you won't click unless counter is odd", counter % 2 == 0) {
 
+                }
+            }
+
+            hbox {
+                label("Name?")
+                textField(::name)
+                if (name.isNotBlank()) {
+                    label("Nice to meet you, $name")
                 }
             }
 
