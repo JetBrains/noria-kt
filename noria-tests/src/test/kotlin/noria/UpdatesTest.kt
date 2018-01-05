@@ -173,6 +173,7 @@ class UpdatesTest {
 
         val updates0 = d.updates()
         c.handleEvent(EventInfo(2, "click", DomEvent()))
+        c.drainUpdateQueue()
         val updates1 = d.updates()
         assertEquals(listOf(
                 Update.DestroyNode(node = 2),

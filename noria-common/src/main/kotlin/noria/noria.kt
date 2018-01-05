@@ -410,7 +410,7 @@ class GraphState(val platform: Platform, val driver: Host) {
         }
     }
 
-    private fun drainUpdateQueue() {
+    fun drainUpdateQueue() {
         synchronized(updateQueue) {
             updateQueue.forEach { _, instance ->
                 ReconciliationState(this).forceUpdate(instance)
