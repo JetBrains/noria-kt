@@ -39,14 +39,14 @@ class SwingDriver : Host {
                             findFunction(node, "add${u.attr.capitalize()}")?.call(node, u.value)
                         }
                         else {
-                            node::class.memberFunctions.find { it.name == "set${u.attr.capitalize()}" }?.call(node, u.value)
+                            findFunction(node, "set${u.attr.capitalize()}")?.call(node, u.value)
                         }
                     }
 
                     is Update.SetNodeAttr -> {
                         val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                         val v = nodes[u.value]
-                        node::class.memberFunctions.find { it.name == "set${u.attr.capitalize()}" }?.call(node, v)
+                        findFunction(node, "set${u.attr.capitalize()}") ?.call(node, v)
                     }
 
                     is Update.SetCallback -> {
