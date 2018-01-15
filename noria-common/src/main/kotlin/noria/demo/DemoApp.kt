@@ -7,22 +7,21 @@ class DemoAppProps
 class DemoAppComponent : View<DemoAppProps>() {
     var counter: Int by managedState(10)
     var name: String by managedState("")
+    var buttonsEnabled: Boolean by managedState(true)
 
     override fun RenderContext.render() {
         vbox {
             hbox {
                 justifyContent = JustifyContent.center
 
-                button("More") {
+                checkbox("Enable Buttons", ::buttonsEnabled)
+
+                button("More", !buttonsEnabled) {
                     counter++
                 }
 
-                button("Less") {
+                button("Less", !buttonsEnabled) {
                     counter--
-                }
-
-                button("This one you won't click unless counter is odd", counter % 2 == 0) {
-
                 }
             }
 

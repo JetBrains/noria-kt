@@ -12,5 +12,6 @@ object DOMPlatform : Platform() {
         register(Label, ::Label)
         register(Button, ::Button)
         register(TextField, ::TextField)
+        register(CheckBox, ::CheckBox)
     }
 }

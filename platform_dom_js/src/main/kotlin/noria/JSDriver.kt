@@ -56,7 +56,7 @@ class JSDriver(val events: (EventInfo) -> Unit) : Host {
                                 node.removeAttribute(u.attr)
                             }
                             else {
-                                node.setAttribute(u.attr, u.value as String)
+                                node.setAttribute(u.attr, u.value.toString())
                             }
                         }
                         else -> error("Unknown type of the node")
@@ -74,8 +74,20 @@ class JSDriver(val events: (EventInfo) -> Unit) : Host {
                         override fun handleEvent(event: Event) {
                             console.log(event)
                             events(EventInfo(u.node, u.attr, when(event.type) {
-                                "change", "keypress" -> {
-                                    ChangeEvent(event.target.asDynamic().value)
+                                "input" -> {
+                                    val target = event.target.asDynamic()
+                                    ChangeEvent(target.value)
+                                }
+
+                                "change"-> {
+                                    val target = event.target.asDynamic()
+                                    val checked: Boolean? = target.checked
+                                    if (checked != null) {
+                                        ChangeEvent(checked)
+                                    }
+                                    else {
+                                        ChangeEvent(target.value)
+                                    }
                                 }
 
                             /*TODO*/

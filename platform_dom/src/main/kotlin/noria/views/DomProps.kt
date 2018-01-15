@@ -7,7 +7,7 @@ import noria.RenderContext
 
 class DomEvent : Event()
 
-class ChangeEvent(val newValue: String?) : Event()
+class ChangeEvent(val newValue: Any?) : Event()
 
 open class DomProps : HostProps(), RenderContext {
     var style: String by value()
@@ -16,6 +16,7 @@ open class DomProps : HostProps(), RenderContext {
 
     // Events
     var click by handler<DomEvent>()
+    var input by handler<ChangeEvent>()
     var change by handler<ChangeEvent>()
 
     override fun <T> reify(e: NElement<T>): NElement<T> {
@@ -30,7 +31,8 @@ open class DomProps : HostProps(), RenderContext {
 class InputProps : DomProps() {
     var type: String by value()
     var value: String by value()
-    var disabled: String by value()
+    var checked: Boolean by value()
+    var disabled: Boolean by value()
 }
 
 /*

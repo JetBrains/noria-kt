@@ -10,11 +10,11 @@ class TextField : View<TextFieldProps>() {
             value = props.bind.get()
 
             if (props.disabled) {
-                disabled = "true"
+                disabled = true
             }
 
-            change = CallbackInfo(true) {
-                props.bind.set(it.newValue ?: "")
+            input = CallbackInfo(true) {
+                props.bind.set(it.newValue as? String ?: "")
             }
         }
     }

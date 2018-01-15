@@ -28,6 +28,13 @@ object SwingPlatform : Platform() {
             set(NTextField::setEnabled, !props.disabled)
             set(NTextField::onTextChanged, {props.bind.set(it)})
         }
+
+        register(CheckBox, NCheckBox::class) { props ->
+            set(NCheckBox::setText, props.text)
+            set(NCheckBox::setSelected, props.bind.getter.call())
+            set(NCheckBox::setEnabled, !props.disabled)
+            set(NCheckBox::onChange, {props.bind.set(it)})
+        }
     }
 
     private fun<Props, Bean:Any> register(pct: PlatformComponentType<Props>, bean: KClass<Bean>, build: BeanHostProps<Bean>.(Props) -> Unit) {
@@ -64,5 +71,15 @@ class NTextField : JTextField() {
                 onTextChanged?.invoke(currentText)
             }
         })
+    }
+}
+
+class NCheckBox : JCheckBox() {
+    var onChange: ((v:  Boolean) -> Unit)? = null
+
+    init {
+        addChangeListener {
+            onChange?.invoke(isSelected)
+        }
     }
 }

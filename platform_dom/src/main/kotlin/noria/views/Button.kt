@@ -11,7 +11,7 @@ class Button : View<ButtonProps>() {
             value = props.title
 
             if (props.disabled) {
-                disabled = "true"
+                disabled = true
             }
 
             click = CallbackInfo(true) {
