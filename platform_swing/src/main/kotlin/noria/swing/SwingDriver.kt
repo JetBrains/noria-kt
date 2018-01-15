@@ -36,7 +36,9 @@ class SwingDriver : Host {
                                 findFunction(node, "remove${u.attr.capitalize()}")?.call(node, oldListener)
                             }
 
-                            findFunction(node, "add${u.attr.capitalize()}")?.call(node, u.value)
+                            if (u.value != null) {
+                                findFunction(node, "add${u.attr.capitalize()}")?.call(node, u.value)
+                            }
                         }
                         else {
                             findFunction(node, "set${u.attr.capitalize()}")?.call(node, u.value)
