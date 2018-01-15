@@ -2,12 +2,12 @@ package noria.swing
 
 import noria.*
 import javax.swing.*
+import kotlin.reflect.*
 import kotlin.reflect.full.*
 
 class SwingDriver : Host {
     private val roots = mutableMapOf<String?, JPanel>()
     private val nodes = mutableMapOf<Int, Any>()
-    private val callbacks = mutableMapOf<Pair<Int, String>, Any?>()
 
     override fun applyUpdates(updates: List<Update>) {
         SwingUtilities.invokeLater {
@@ -29,26 +29,13 @@ class SwingDriver : Host {
 
                     is Update.SetAttr -> {
                         val node = nodes[u.node] ?: error("Update $u. Cannot find node")
-                        if (u.attr.endsWith("Listener")) {
-                            val oldListener = callbacks[u.node to u.attr]
-                            callbacks[u.node to u.attr] = u.value
-                            if (oldListener != null) {
-                                findFunction(node, "remove${u.attr.capitalize()}")?.call(node, oldListener)
-                            }
-
-                            if (u.value != null) {
-                                findFunction(node, "add${u.attr.capitalize()}")?.call(node, u.value)
-                            }
-                        }
-                        else {
-                            findFunction(node, "set${u.attr.capitalize()}")?.call(node, u.value)
-                        }
+                        findFunction(node, u.attr)?.call(node, u.value)
                     }
 
                     is Update.SetNodeAttr -> {
                         val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                         val v = nodes[u.value]
-                        findFunction(node, "set${u.attr.capitalize()}") ?.call(node, v)
+                        findFunction(node, u.attr) ?.call(node, v)
                     }
 
                     is Update.SetCallback -> {
@@ -63,24 +50,14 @@ class SwingDriver : Host {
                         val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                         val child = nodes[u.value as Int] ?: error("Update $u. Cannot find child")
 
-                        if (u.attr.endsWith("Listeners")) {
-                            findFunction(node, "add${u.attr.dropLast(1).capitalize()}")?.call(node, child)
-                        }
-                        else {
-                            (node as JComponent).add(child as JComponent, u.index)
-                        }
+                        (node as JComponent).add(child as JComponent, u.index)
                     }
 
                     is Update.Remove -> {
                         val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                         val child = nodes[u.value as Int] ?: error("Update $u. Cannot find child")
 
-                        if (u.attr.endsWith("Listeners")) {
-                            findFunction(node, "remove${u.attr.dropLast(1).capitalize()}")?.call(node, child)
-                        }
-                        else {
-                            (node as JComponent).remove(child as JComponent)
-                        }
+                        (node as JComponent).remove(child as JComponent)
                     }
 
                     is Update.DestroyNode -> {
@@ -92,7 +69,12 @@ class SwingDriver : Host {
         }
     }
 
-    private fun findFunction(node: Any, name: String) = node::class.memberFunctions.find { it.name == name }
+    private fun findFunction(node: Any, attr: String): KFunction<Any?>? {
+        // TODO Reflection cache
+
+        val setterName = "set${attr.capitalize()}"
+        return node::class.memberFunctions.find { it.name == setterName } ?: (node::class.memberProperties.find { it.name == attr } as? KMutableProperty<Any?>)?.setter
+    }
 
     fun registerRoot(id: String, root: JPanel) {
         roots[id] = root
