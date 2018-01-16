@@ -21,20 +21,20 @@ val NSView = HostComponentType<NSViewProps>("NSView")
 val NSLayoutConstraint = HostComponentType<NSConstraint>("NSLayoutConstraint")
 
 data class MyProps(val x: Int = 0)
-class MyMacComponent : View<MyProps>() {
+class MyMacComponent(props: MyProps) : View<MyProps>(props) {
     override fun RenderContext.render() {
-        val v1 = reify(createElement(NSView, NSViewProps().apply {
-            subviews.add(createElement(NSView, NSViewProps()))
+        val v1 = reify(createHostElement(NSView, NSViewProps().apply {
+            subviews.add(createHostElement(NSView, NSViewProps()))
         }))
 
-        val v2 = reify(createElement(NSView, NSViewProps().apply {
-            subviews.add(createElement(NSView, NSViewProps()))
+        val v2 = reify(createHostElement(NSView, NSViewProps().apply {
+            subviews.add(createHostElement(NSView, NSViewProps()))
             onClick = CallbackInfo(true) { event ->
                 println("hello")
             }
         }))
 
-        reify(createElement(NSLayoutConstraint, NSConstraint().apply {
+        reify(createHostElement(NSLayoutConstraint, NSConstraint().apply {
             view1 = v1
             view2 = v2
         }))
@@ -57,14 +57,14 @@ class LabelProps {
     var text: String = ""
 }
 
-class Label : View<LabelProps>() {
+class Label(p: LabelProps) : View<LabelProps>(p) {
     override fun RenderContext.render() {
         text(props.text)
     }
 }
 
 data class SimpleContainerProps(val x: Int)
-class SimpleContainer : View<SimpleContainerProps>() {
+class SimpleContainer(p: SimpleContainerProps) : View<SimpleContainerProps>(p) {
     override fun RenderContext.render() {
         div {
             for (c in (0..props.x)) {
@@ -79,7 +79,7 @@ class SimpleContainer : View<SimpleContainerProps>() {
 data class SplitProps(val left: NElement<*>,
                       val right: NElement<*>)
 
-class SplitView : View<SplitProps>() {
+class SplitView(c: SplitProps) : View<SplitProps>(c) {
     override fun RenderContext.render() {
         div {
             emit(props.left)
@@ -91,7 +91,7 @@ class SplitView : View<SplitProps>() {
 data class HOProps(val x: NElement<*>,
                    val y: NElement<*>)
 
-class HO : View<HOProps>() {
+class HO(p: HOProps) : View<HOProps>(p) {
     override fun RenderContext.render() {
         val x1 = capture {  emit(props.x) }
         val y1 = capture { emit(props.y) }
@@ -116,7 +116,7 @@ class CapturingDriver : Host {
 }
 
 data class WrapperProps(val w: NElement<*>?)
-class Wrapper : View<WrapperProps>() {
+class Wrapper(p: WrapperProps) : View<WrapperProps>(p) {
     override fun RenderContext.render() {
         div {
             val w = props.w
@@ -128,7 +128,7 @@ class Wrapper : View<WrapperProps>() {
 }
 
 data class ReifiesProps(val i: Int)
-class Reifies : View<ReifiesProps>() {
+class Reifies(p: ReifiesProps) : View<ReifiesProps>(p) {
     override fun RenderContext.render() {
         val e = capture {label("some text")}
         div {
@@ -146,7 +146,7 @@ class Reifies : View<ReifiesProps>() {
     }
 }
 
-class RenderCounter : View<Any>() {
+class RenderCounter(p: Any) : View<Any>(0) {
     var counter = 0
     override fun RenderContext.render() {
         x((if (counter % 2 == 0) Div else Span)) {
@@ -200,15 +200,15 @@ class UpdatesTest {
     }
 
     inline fun div(build: DomProps.() -> Unit): NElement<*> {
-        return createElement(Div, DomProps().apply(build))
+        return createHostElement(Div, DomProps().apply(build))
     }
 
 
     @Test
     fun `test reify`() {
         checkUpdates(listOf(
-                createElement(::Reifies, ReifiesProps(0)) to null,
-                createElement(::Reifies, ReifiesProps(1)) to listOf(
+                createViewElement(::Reifies, ReifiesProps(0)) to null,
+                createViewElement(::Reifies, ReifiesProps(1)) to listOf(
                         Update.Remove(node = 2, attr = "children", value = 0),
                         Update.Add(node = 3, attr = "children", value = 0, index = 0)
                 )))
@@ -222,7 +222,7 @@ class UpdatesTest {
                         x(Pre) {}
                     }
                 } to null,
-                createElement(Div, DomProps()) to listOf(
+                createHostElement(Div, DomProps()) to listOf(
                         Update.Remove(node = 0, attr = "children", value = 1),
                         Update.DestroyNode(node = 1),
                         Update.DestroyNode(node = 2))
@@ -238,26 +238,26 @@ class UpdatesTest {
         val Fuzz = HostComponentType<TestProps1>("fuzz")
 
         checkUpdates(listOf(
-                createElement(::HO, HOProps(
-                        x = createElement(Foo, TestProps1()),
-                        y = createElement(Bar, TestProps1()))) to listOf(
+                createViewElement(::HO, HOProps(
+                        x = createHostElement(Foo, TestProps1()),
+                        y = createHostElement(Bar, TestProps1()))) to listOf(
                         Update.MakeNode(node = 0, type = "foo", parameters = fastStringMap()),
                         Update.MakeNode(node = 1, type = "bar", parameters = fastStringMap()),
                         Update.MakeNode(node = 2, type = "div", parameters = fastStringMap()),
                         Update.Add(node = 2, attr = "children", value = 0, index = 0),
                         Update.Add(node = 2, attr = "children", value = 1, index = 1)
                 ),
-                createElement(::HO, HOProps(
-                        x = createElement(Foo, TestProps1()),
-                        y = createElement(Baz, TestProps1()))) to listOf(
+                createViewElement(::HO, HOProps(
+                        x = createHostElement(Foo, TestProps1()),
+                        y = createHostElement(Baz, TestProps1()))) to listOf(
                         Update.MakeNode(node = 3, type = "baz", parameters = fastStringMap()),
                         Update.Remove(node = 2, attr = "children", value = 1),
                         Update.Add(node = 2, attr = "children", value = 3, index = 1),
                         Update.DestroyNode(node = 1)
                 ),
-                createElement(::HO, HOProps(
-                        x = createElement(Fizz, TestProps1()),
-                        y = createElement(Fuzz, TestProps1()))) to
+                createViewElement(::HO, HOProps(
+                        x = createHostElement(Fizz, TestProps1()),
+                        y = createHostElement(Fuzz, TestProps1()))) to
                         listOf(
                                 Update.MakeNode(node = 4, type = "fizz", parameters = fastStringMap()),
                                 Update.MakeNode(node = 5, type = "fuzz", parameters = fastStringMap()),
@@ -274,12 +274,12 @@ class UpdatesTest {
     @Test
     fun `simple container test`() {
         checkUpdates(listOf(
-                createElement(::SimpleContainer, SimpleContainerProps(x = 2)) to null,
-                createElement(::SimpleContainer, SimpleContainerProps(x = 2)) to emptyList<Update>(),
-                createElement(::SimpleContainer, SimpleContainerProps(x = 1)) to listOf(
+                createViewElement(::SimpleContainer, SimpleContainerProps(x = 2)) to null,
+                createViewElement(::SimpleContainer, SimpleContainerProps(x = 2)) to emptyList<Update>(),
+                createViewElement(::SimpleContainer, SimpleContainerProps(x = 1)) to listOf(
                         Update.Remove(node = 0, attr = "children", value = 3),
                         Update.DestroyNode(node = 3)),
-                createElement(::SimpleContainer, SimpleContainerProps(x = 3)) to listOf(
+                createViewElement(::SimpleContainer, SimpleContainerProps(x = 3)) to listOf(
                         Update.MakeNode(node = 4, type = "textnode", parameters = fastStringMap()),
                         Update.SetAttr(node = 4, attr = "text", value = "2"),
                         Update.MakeNode(node = 5, type = "textnode", parameters = fastStringMap()),
@@ -287,7 +287,7 @@ class UpdatesTest {
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),
                         Update.Add(node = 0, attr = "children", value = 5, index = 3)
                 ),
-                createElement(::SimpleContainer, SimpleContainerProps(x = 2)) to listOf(
+                createViewElement(::SimpleContainer, SimpleContainerProps(x = 2)) to listOf(
                         Update.Remove(node = 0, attr = "children", value = 5),
                         Update.DestroyNode(node = 5))))
     }
@@ -359,7 +359,7 @@ class UpdatesTest {
     @Test
     fun `Reconciliation keeps the view and adds update for new subview`() {
         checkUpdates(listOf(
-                createElement(::MyMacComponent, MyProps()) to null,
-                createElement(::MyMacComponent, MyProps(x = 1)) to listOf(Update.Add(node = 5, attr = "subviews", value = 2, index = 1))))
+                createViewElement(::MyMacComponent, MyProps()) to null,
+                createViewElement(::MyMacComponent, MyProps(x = 1)) to listOf(Update.Add(node = 5, attr = "subviews", value = 2, index = 1))))
     }
 }

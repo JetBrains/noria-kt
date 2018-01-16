@@ -21,7 +21,7 @@ inline fun RenderContext.pre(build: DomProps.() -> Unit) {
 
 
 
-class FlexBox : Container<BoxProps>() {
+class FlexBox(props: BoxProps) : Container<BoxProps>(props) {
     override fun RenderContext.render() {
         div {
             style = buildString {

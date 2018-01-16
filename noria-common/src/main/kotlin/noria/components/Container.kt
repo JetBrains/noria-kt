@@ -12,5 +12,5 @@ open class ContainerProps(val children: MutableList<NElement<*>> = mutableListOf
     }
 }
 
-abstract class Container<T: ContainerProps> : View<T>()
+abstract class Container<T: ContainerProps>(props: T) : View<T>(props)
 

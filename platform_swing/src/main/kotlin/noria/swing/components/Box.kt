@@ -21,11 +21,11 @@ class FlowLayoutProps : LayoutProps() {
 val FlowLayoutCT = HostComponentType<FlowLayoutProps>("java.awt.FlowLayout")
 val VerticalFlowLayoutCT = HostComponentType<FlowLayoutProps>("noria.swing.components.VerticalFlowLayout")
 
-class FlexBox : Container<BoxProps>() {
+class FlexBox(props: BoxProps) : Container<BoxProps>(props) {
     override fun RenderContext.render() {
         x(Panel) {
             if (props.flexDirection == FlexDirection.column) {
-                layout = createElement(VerticalFlowLayoutCT, FlowLayoutProps().apply {
+                layout = createHostElement(VerticalFlowLayoutCT, FlowLayoutProps().apply {
                     when (props.justifyContent ?: JustifyContent.start) {
                         JustifyContent.center -> {
                             alignment = VerticalFlowLayout.MIDDLE
@@ -55,7 +55,7 @@ class FlexBox : Container<BoxProps>() {
                     }
                 })
             } else {
-                layout = createElement(FlowLayoutCT, FlowLayoutProps().apply {
+                layout = createHostElement(FlowLayoutCT, FlowLayoutProps().apply {
                     when (props.justifyContent ?: JustifyContent.start) {
                         JustifyContent.center -> {
                             alignment = FlowLayout.CENTER

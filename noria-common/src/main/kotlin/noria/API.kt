@@ -10,23 +10,23 @@ interface RenderContext {
 }
 
 fun <T> RenderContext.x(cons: Constructor<T>, props: T, key: String? = null) {
-    emit(createElement(cons, props, key))
+    emit(createViewElement(cons, props, key))
 }
 
 inline fun <reified T:Any> RenderContext.x(noinline cons: Constructor<T>, key: String? = null, build: T.() -> Unit) {
     x(cons, T::class.instantiate().apply(build), key)
 }
 
-fun <T> RenderContext.x(render: Render<T>, props: T, key: String? = null) {
-    emit(createElement(render, props, key))
+fun <T> RenderContext.fx(render: Render<T>, props: T, key: String? = null) {
+    emit(createFnElement(render, props, key))
 }
 
-inline fun <reified T:Any> RenderContext.x(noinline render: Render<T>, key: String? = null, build: T.() -> Unit) {
-    x(render, T::class.instantiate().apply(build), key)
+inline fun <reified T:Any> RenderContext.fx(noinline render: Render<T>, key: String? = null, build: T.() -> Unit) {
+    fx(render, T::class.instantiate().apply(build), key)
 }
 
 fun <T:HostProps> RenderContext.x(host: HostComponentType<T>, props: T, key: String? = null) {
-    emit(createElement(host, props, key))
+    emit(createHostElement(host, props, key))
 }
 
 inline fun <reified T:HostProps> RenderContext.x(host: HostComponentType<T>, key: String? = null, build: T.() -> Unit) {
@@ -34,17 +34,17 @@ inline fun <reified T:HostProps> RenderContext.x(host: HostComponentType<T>, key
 }
 
 fun <T> RenderContext.x(host: PlatformComponentType<T>, props: T, key: String? = null) {
-    emit(createElement(host, props, key))
+    emit(createPlatformElement(host, props, key))
 }
 
 inline fun <reified T:Any> RenderContext.x(host: PlatformComponentType<T>, key: String? = null, build: T.() -> Unit) {
     x(host, T::class.instantiate().apply(build), key)
 }
 
-fun <T> createElement(render: Render<T>, props: T, key: String? = null): NElement<T> = NElement.Fun(render, props, key)
-fun <T> createElement(cons: Constructor<T>, props: T, key: String? = null) : NElement<T> = NElement.Class(cons, props, key)
-fun <T: HostProps> createElement(hct: HostComponentType<T>, props: T, key: String? = null) : NElement<T> = NElement.HostElement(hct, props, key)
-fun <T> createElement(pct: PlatformComponentType<T>, props: T, key: String? = null) : NElement<T> = NElement.PlatformDispatch(pct, props, key)
+fun <T> createFnElement(render: Render<T>, props: T, key: String? = null): NElement<T> = NElement.Fun(render, props, key)
+fun <T> createViewElement(cons: Constructor<T>, props: T, key: String? = null) : NElement<T> = NElement.Class(cons, props, key)
+fun <T: HostProps> createHostElement(hct: HostComponentType<T>, props: T, key: String? = null) : NElement<T> = NElement.HostElement(hct, props, key)
+fun <T> createPlatformElement(pct: PlatformComponentType<T>, props: T, key: String? = null) : NElement<T> = NElement.PlatformDispatch(pct, props, key)
 
 fun RenderContext.capture(build: RenderContext.() -> Unit) : NElement<*> {
     val capturingContext = RenderContextImpl()
@@ -52,9 +52,7 @@ fun RenderContext.capture(build: RenderContext.() -> Unit) : NElement<*> {
     return reify(capturingContext.createdElements.single())
 }
 
-abstract class View<T> {
-    val props: T get() = _props ?: error("Props are not initialized yet")
-    internal var _props: T? = null
+abstract class View<T>(var props: T) {
     internal lateinit var context: GraphState
     internal lateinit var instance: UserInstance
 
@@ -84,7 +82,7 @@ abstract class View<T> {
 }
 
 typealias Render<T> = (T) -> NElement<*>
-typealias Constructor<T> = () -> View<T>
+typealias Constructor<T> = (T) -> View<T>
 
 interface ComponentType<T>
 

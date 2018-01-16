@@ -5,12 +5,14 @@ import noria.components.*
 
 val labelCT = HostComponentType<InputProps>("label")
 
-class CheckBox : View<CheckBoxProps>() {
+class CheckBox(p: CheckBoxProps) : View<CheckBoxProps>(p) {
     override fun RenderContext.render() {
         x(labelCT) {
             x(inputCT) {
                 type = "checkbox"
-                checked = props.bind.get()
+                if (props.bind.get()) {
+                    checked = true
+                }
 
                 if (props.disabled) {
                     disabled = true
