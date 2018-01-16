@@ -7,7 +7,7 @@ class DOMRootProps : DomProps() {
     var id: String by value(true)
 }
 
-class DOMRoot : View<RootProps>() {
+class DOMRoot(p: RootProps) : View<RootProps>(p) {
     override fun RenderContext.render() {
         x(root) {
             id = props.id

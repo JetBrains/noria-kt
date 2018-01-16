@@ -75,7 +75,7 @@ class ReconciliationState(val graph: GraphState) {
                 e == null -> null
                 e is NElement.HostElement<*> -> reconcileHost(component as HostInstance?, e, env)
                 (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e, env, false)
-                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, createElement(graph.platform.resolve(e.type as PlatformComponentType<Any?>), e.props, e.key), env)
+                e is NElement.PlatformDispatch<*> -> reconcileImpl(component, createViewElement(graph.platform.resolve(e.type as PlatformComponentType<Any?>), e.props, e.key), env)
                 e is NElement.Reified<*> -> env.lookup(e.id)
                 else -> throw IllegalArgumentException("don't know how to reconcile $e")
             }
@@ -139,13 +139,15 @@ class ReconciliationState(val graph: GraphState) {
         val substElement = when (e) {
             is NElement.Fun<*> -> (e as NElement.Fun<Any>).type(e.props)
             is NElement.Class<*> -> {
+                var newView = false
                 if (view == null) {
-                    view = e.type() as View<Any?>
+                    view = (e.type as Constructor<Any?>) (e.props)
+                    newView = true
                 }
 
                 view.run {
-                    if (_props == null || isForceUpate || shouldUpdate(e.props)) {
-                        _props = e.props
+                    if (newView || isForceUpate || shouldUpdate(e.props)) {
+                        props = e.props
                         renderContext.render()
                         renderContext.createdElements.let { when(it.size) {
                             0 -> null
@@ -153,7 +155,7 @@ class ReconciliationState(val graph: GraphState) {
                             else -> error("Single element expected from render function")
                         }}
                     } else {
-                        _props = e.props
+                        props = e.props
                         userComponent!!.subst?.element
                     }
                 }
@@ -425,7 +427,7 @@ class GraphState(val platform: Platform, val driver: Host) {
         val root = RenderContextImpl().run {
             buildRoot()
             val element = createdElements.single()
-            createElement(Root, RootProps(id, element))
+            createPlatformElement(Root, RootProps(id, element))
         }
 
         ReconciliationState(this).mountRoot(root)

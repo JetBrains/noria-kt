@@ -4,7 +4,7 @@ import noria.*
 import noria.components.*
 
 val inputCT = HostComponentType<InputProps>("input")
-class Button : View<ButtonProps>() {
+class Button(p: ButtonProps) : View<ButtonProps>(p) {
     override fun RenderContext.render() {
         x(inputCT) {
             type = "button"

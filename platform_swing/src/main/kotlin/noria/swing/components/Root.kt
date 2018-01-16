@@ -7,7 +7,7 @@ class SwingRootProps : HostProps() {
     val children: MutableList<NElement<*>> by elementList()
 }
 
-class SwingRoot : View<RootProps>() {
+class SwingRoot(p: RootProps) : View<RootProps>(p) {
     override fun RenderContext.render() {
         x(root) {
             id = props.id

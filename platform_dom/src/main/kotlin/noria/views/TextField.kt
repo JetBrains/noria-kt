@@ -3,7 +3,7 @@ package noria.views
 import noria.*
 import noria.components.*
 
-class TextField : View<TextFieldProps>() {
+class TextField(p: TextFieldProps) : View<TextFieldProps>(p) {
     override fun RenderContext.render() {
         x(inputCT) {
             type = "text"

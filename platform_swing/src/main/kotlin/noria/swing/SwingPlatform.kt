@@ -38,8 +38,8 @@ object SwingPlatform : Platform() {
     }
 
     private fun<Props, Bean:Any> register(pct: PlatformComponentType<Props>, bean: KClass<Bean>, build: BeanHostProps<Bean>.(Props) -> Unit) {
-        return register(pct) {
-            beanView(bean, build)
+        return register(pct) { props ->
+            ManagedBeanView(props, HostComponentType(bean.qualifiedName!!), build)
         }
     }
 }
