@@ -73,8 +73,20 @@ class ReconciliationState(val graph: GraphState) {
     private fun reconcileImpl(component: Instance?, e: NElement<*>?, env: Env): Instance? =
             when {
                 e == null -> null
-                e is NElement.HostElement<*> -> reconcileHost(component as HostInstance?, e, env)
-                (e is NElement.Class<*>) || (e is NElement.Fun<*>) -> reconcileUser(component as UserInstance?, e, env, false)
+                e is NElement.HostElement<*> ->
+                    if (component != null && component.element !is NElement.HostElement<*>) {
+                        destroyValue(component)
+                        reconcileImpl(null, e, env)
+                    } else {
+                        reconcileHost(component as HostInstance?, e, env)
+                    }
+                (e is NElement.Class<*>) || (e is NElement.Fun<*>) ->
+                    if (component != null && (component.element !is NElement.Class<*> && component.element !is NElement.Fun<*>)) {
+                        destroyValue(component)
+                        reconcileImpl(null, e, env)
+                    } else {
+                        reconcileUser(component as UserInstance?, e, env, false)
+                    }
                 e is NElement.PlatformDispatch<*> -> reconcileImpl(component, createViewElement(graph.platform.resolve(e.type as PlatformComponentType<Any?>), e.props, e.key), env)
                 e is NElement.Reified<*> -> env.lookup(e.id)
                 else -> throw IllegalArgumentException("don't know how to reconcile $e")
@@ -141,7 +153,7 @@ class ReconciliationState(val graph: GraphState) {
             is NElement.Class<*> -> {
                 var newView = false
                 if (view == null) {
-                    view = (e.type as Constructor<Any?>) (e.props)
+                    view = (e.type as Constructor<Any?>)(e.props)
                     newView = true
                 }
 
@@ -149,11 +161,13 @@ class ReconciliationState(val graph: GraphState) {
                     if (newView || isForceUpate || shouldUpdate(e.props)) {
                         props = e.props
                         renderContext.render()
-                        renderContext.createdElements.let { when(it.size) {
-                            0 -> null
-                            1 -> it.first()
-                            else -> error("Single element expected from render function")
-                        }}
+                        renderContext.createdElements.let {
+                            when (it.size) {
+                                0 -> null
+                                1 -> it.first()
+                                else -> error("Single element expected from render function")
+                            }
+                        }
                     } else {
                         props = e.props
                         userComponent!!.subst?.element
@@ -168,7 +182,7 @@ class ReconciliationState(val graph: GraphState) {
         val oldByKeys = userComponent?.byKeys ?: fastStringMap()
         val newComponents = reconcileByKeys(oldByKeys, renderContext.reifiedElements.map { it.e }, env)
         val newEnvMap = fastIntMap<Instance>()
-        renderContext.reifiedElements.forEachIndexed {i, c ->
+        renderContext.reifiedElements.forEachIndexed { i, c ->
             newEnvMap[c.id] = newComponents[i]
         }
         val newEnv = Env(env, newEnvMap)
@@ -246,7 +260,7 @@ class ReconciliationState(val graph: GraphState) {
 
     private fun reconcileHost(hostInstance: HostInstance?, e: NElement.HostElement<*>, env: Env): HostInstance {
         if (hostInstance != null && hostInstance.element.type != e.type) {
-            supply(Update.DestroyNode(hostInstance.node!!))
+            destroyValue(hostInstance)
             return reconcileHost(null, e, env)
         }
         val node: Int = hostInstance?.node ?: graph.makeNode()
@@ -350,6 +364,10 @@ class ReconciliationState(val graph: GraphState) {
         return result
     }
 
+    private fun destroyValue(hostInstance: Instance) {
+        supply(Update.DestroyNode(hostInstance.node!!))
+    }
+
     private fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>) {
         val lcs = lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
         oldList.forEach { c ->
@@ -391,7 +409,7 @@ class GraphState(val platform: Platform, val driver: Host) {
     private var nextNode: Int = 0
     internal val callbacksTable: MutableMapLike<Int, MutableMapLike<String, CallbackInfo<*>>> = fastIntMap()
 
-    private val updateQueue : MutableMapLike<Int, UserInstance> = fastIntMap()
+    private val updateQueue: MutableMapLike<Int, UserInstance> = fastIntMap()
 
     internal fun makeNode() = nextNode++
 
