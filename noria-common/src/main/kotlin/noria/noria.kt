@@ -21,7 +21,7 @@ class RenderContextImpl() : RenderContext {
     }
 }
 
-class Env(private val parent: Env?, private val vars: Map<Int, Instance>) {
+class Env(private val parent: Env?, private val vars: MutableMapLike<Int, Instance>) {
     companion object {
         var nextVar = 0
     }
@@ -60,13 +60,13 @@ class ReconciliationState(val graph: GraphState) {
     }
 
     fun mountRoot(e: NElement<RootProps>) {
-        reconcileImpl(null, e, Env(null, emptyMap()))
+        reconcileImpl(null, e, Env(null, fastIntMap()))
         graph.driver.applyUpdates(updates)
     }
 
     //TODO remove, tests only
     fun reconcile(component: Instance?, e: NElement<*>): Pair<Instance?, List<Update>> {
-        val instance = reconcileImpl(component, e, Env(null, emptyMap()))
+        val instance = reconcileImpl(component, e, Env(null, fastIntMap()))
         return instance to updates
     }
 
@@ -165,9 +165,11 @@ class ReconciliationState(val graph: GraphState) {
         assignKeys(renderContext.reifiedElements)
         val oldByKeys = userComponent?.byKeys ?: fastStringMap()
         val newComponents = reconcileByKeys(oldByKeys, renderContext.reifiedElements.map { it.e }, env)
-        val newEnv = Env(env, renderContext.reifiedElements.zip(newComponents) { reified, instance ->
-            reified.id to instance
-        }.toMap())
+        val newEnvMap = fastIntMap<Instance>()
+        renderContext.reifiedElements.forEachIndexed {i, c ->
+            newEnvMap[c.id] = newComponents[i]
+        }
+        val newEnv = Env(env, newEnvMap)
         val newSubst = reconcileImpl(userComponent?.subst, substElement, newEnv)
         val newByKeys = fastStringMap<Instance>()
         for (c in newComponents) {
@@ -348,15 +350,8 @@ class ReconciliationState(val graph: GraphState) {
 
     private fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>) {
         val lcs = lcs(oldList.toIntArray(), newList.toIntArray()).toHashSet()
-        val oldNodesSet = fastIntMap<Int>()
-        for (n in oldList) {
-            oldNodesSet[n] = n
-        }
-        val allNodes = hashSetOf<Int>()
-        oldList.toCollection(allNodes)
-        newList.toCollection(allNodes)
-        for (c in allNodes) {
-            if (!lcs.contains(c) && oldNodesSet.containsKey(c)) {
+        oldList.forEach { c ->
+            if (!lcs.contains(c)) {
                 supply(Update.Remove(node = node, value = c, attr = attr))
             }
         }
