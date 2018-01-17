@@ -80,6 +80,10 @@ class ItemComponent(p: Item) : View<Item>(p) {
                     events.onEnter = {
                         props.onDoneEditing(props, editText)
                     }
+
+                    events.onFocusLost = {
+                        props.onDoneEditing(props, editText)
+                    }
                 }
             } else {
                 label(props.desc) {

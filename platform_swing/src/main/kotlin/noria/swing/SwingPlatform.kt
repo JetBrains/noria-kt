@@ -48,15 +48,18 @@ object SwingPlatform : Platform() {
 }
 
 
-class NLabel : JLabel() {
-    var events: Events? = null
+interface ControlWithEvents {
+    var events: Events?
 
-    init {
-        addMouseListener(object: MouseListener {
+    fun setupListeners() {
+        this as JComponent
+
+        addMouseListener(object : MouseListener {
             override fun mouseReleased(e: MouseEvent?) {
             }
 
             override fun mouseEntered(e: MouseEvent?) {
+                events?.onMouseEntered?.invoke()
             }
 
             override fun mouseClicked(e: MouseEvent?) {
@@ -64,26 +67,63 @@ class NLabel : JLabel() {
             }
 
             override fun mouseExited(e: MouseEvent?) {
+                events?.onMouseExited?.invoke()
             }
 
             override fun mousePressed(e: MouseEvent?) {
             }
         })
+
+        addKeyListener(object : KeyListener {
+            override fun keyTyped(e: KeyEvent) {
+            }
+
+            override fun keyPressed(e: KeyEvent) {
+                if (e.keyCode == KeyEvent.VK_ENTER) {
+                    events?.onEnter?.invoke()
+                }
+            }
+
+            override fun keyReleased(e: KeyEvent) {
+            }
+        })
+
+        addFocusListener(object : FocusListener {
+            override fun focusLost(e: FocusEvent) {
+                events?.onFocusLost?.invoke()
+            }
+
+            override fun focusGained(e: FocusEvent) {
+                events?.onFocusGained?.invoke()
+            }
+        })
     }
 }
 
-class NButton : JButton() {
+class NLabel : JLabel(), ControlWithEvents {
+    override var events: Events? = null
+
+    init {
+        setupListeners()
+    }
+}
+
+class NButton : JButton(), ControlWithEvents {
+    override var events: Events? = null
+
     var _action: (() -> Unit)? = null
 
     init {
         addActionListener {
             _action?.invoke()
         }
+
+        setupListeners()
     }
 }
 
-class NTextField : JTextField() {
-    var events: Events? = null
+class NTextField : JTextField(), ControlWithEvents {
+    override var events: Events? = null
     var onTextChanged: ((newText: String) -> Unit)? = null
     val currentText: String get() = document.getText(0, document.length)
     override fun setText(t: String?) {
@@ -111,23 +151,14 @@ class NTextField : JTextField() {
             }
         })
 
-        addKeyListener(object: KeyListener {
-            override fun keyTyped(e: KeyEvent) {
-            }
-
-            override fun keyPressed(e: KeyEvent) {
-                if(e.keyCode == KeyEvent.VK_ENTER) {
-                    events?.onEnter?.invoke()
-                }
-            }
-
-            override fun keyReleased(e: KeyEvent) {
-            }
-        })
+        setupListeners()
     }
 }
 
-class NCheckBox : JCheckBox() {
+
+class NCheckBox : JCheckBox(), ControlWithEvents {
+    override var events: Events? = null
+
     var onChange: ((v:  Boolean) -> Unit)? = null
 
     init {
@@ -136,5 +167,7 @@ class NCheckBox : JCheckBox() {
                 onChange?.invoke(isSelected)
             }
         }
+
+        setupListeners()
     }
 }
