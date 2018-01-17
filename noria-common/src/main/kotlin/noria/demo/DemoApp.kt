@@ -24,8 +24,9 @@ class DemoAppComponent(p: DemoAppProps) : View<DemoAppProps>(p) {
 
     fun updateStarted(item: Item) {
         items.values.filter { it.editing }.forEach {
-                    items[it.key] = it.copy(editing = false)
-                }
+            items[it.key] = it.copy(editing = false)
+        }
+
         items[item.key] = item.copy(editing = true)
         forceUpdate()
     }
@@ -66,21 +67,21 @@ class DemoAppComponent(p: DemoAppProps) : View<DemoAppProps>(p) {
 
 class ItemComponent(p: Item) : View<Item>(p) {
     var editText: String by managedState(props.desc)
-    var completed : Boolean by Delegates.observable(p.completed) { _, _, v ->
+    var completed: Boolean by Delegates.observable(p.completed) { _, _, v ->
         props.onSetCompleted(props, v)
     }
 
     override fun RenderContext.render() {
         hbox {
+            checkbox("", ::completed, props.editing)
+
             if (props.editing) {
                 textField(::editText) {
                     events.onEnter = {
                         props.onDoneEditing(props, editText)
                     }
                 }
-            }
-            else {
-                checkbox("", ::completed)
+            } else {
                 label(props.desc) {
                     events.onClick = {
                         props.onStartEditing(props)
