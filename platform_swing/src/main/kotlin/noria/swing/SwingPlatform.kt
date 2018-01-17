@@ -88,14 +88,19 @@ class NTextField : JTextField() {
     init {
         document.addDocumentListener(object: DocumentListener {
             override fun changedUpdate(e: DocumentEvent) {
+
             }
 
             override fun insertUpdate(e: DocumentEvent) {
-                onTextChanged?.invoke(currentText)
+                if (!SwingDriver.listenersSuppressed) {
+                    onTextChanged?.invoke(currentText)
+                }
             }
 
             override fun removeUpdate(e: DocumentEvent) {
-                onTextChanged?.invoke(currentText)
+                if (!SwingDriver.listenersSuppressed) {
+                    onTextChanged?.invoke(currentText)
+                }
             }
         })
     }
@@ -106,7 +111,9 @@ class NCheckBox : JCheckBox() {
 
     init {
         addChangeListener {
-            onChange?.invoke(isSelected)
+            if (!SwingDriver.listenersSuppressed) {
+                onChange?.invoke(isSelected)
+            }
         }
     }
 }
