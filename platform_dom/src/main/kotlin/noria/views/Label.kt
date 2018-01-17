@@ -8,6 +8,7 @@ class TextNodeProps : HostProps() {
 }
 
 val textNodeCT = HostComponentType<TextNodeProps>("textnode")
+val spanCT = HostComponentType<DomProps>("span")
 
 fun RenderContext.text(value: String, key: String? = null) = x(textNodeCT, key) {
     text = value
@@ -15,6 +16,11 @@ fun RenderContext.text(value: String, key: String? = null) = x(textNodeCT, key) 
 
 class Label(p: LabelProps) : View<LabelProps>(p) {
     override fun RenderContext.render() {
-        text(props.text)
+        x(spanCT) {
+            text(props.text)
+            click = CallbackInfo(true) {
+                props.events.onClick?.invoke()
+            }
+        }
     }
 }

@@ -18,6 +18,7 @@ open class DomProps : HostProps(), RenderContext {
     var click by handler<DomEvent>()
     var input by handler<ChangeEvent>()
     var change by handler<ChangeEvent>()
+    var clicked by handler<ChangeEvent>()
 
     override fun <T> reify(e: NElement<T>): NElement<T> {
         error("Should only be called on top level in render function")

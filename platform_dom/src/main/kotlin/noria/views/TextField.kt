@@ -16,6 +16,10 @@ class TextField(p: TextFieldProps) : View<TextFieldProps>(p) {
             input = CallbackInfo(true) {
                 props.bind.set(it.newValue as? String ?: "")
             }
+
+            change = CallbackInfo(true) {
+                props.events.onEnter?.invoke()
+            }
         }
     }
 }
