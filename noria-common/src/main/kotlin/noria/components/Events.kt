@@ -6,4 +6,5 @@ abstract class PlatformProps {
 
 class Events {
     var onClick : (() -> Unit)? = null
+    var onEnter: (() -> Unit)? = null
 }
