@@ -86,6 +86,11 @@ class NTextField : JTextField() {
     var events: Events? = null
     var onTextChanged: ((newText: String) -> Unit)? = null
     val currentText: String get() = document.getText(0, document.length)
+    override fun setText(t: String?) {
+        if (t != currentText) {
+            super.setText(t)
+        }
+    }
 
     init {
         document.addDocumentListener(object: DocumentListener {
