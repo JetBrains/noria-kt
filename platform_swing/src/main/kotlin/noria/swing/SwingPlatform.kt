@@ -3,6 +3,7 @@ package noria.swing
 import noria.*
 import noria.components.*
 import noria.swing.components.*
+import java.awt.event.*
 import javax.swing.*
 import javax.swing.event.*
 import kotlin.reflect.*
@@ -13,27 +14,28 @@ object SwingPlatform : Platform() {
         register(HBox, ::FlexBox)
         register(VBox, ::FlexBox)
 
-        register(Label, JLabel::class) {
-            set(JLabel::setText, it.text)
+        register(Label, NLabel::class) {
+            set(NLabel::setText, it.text)
+            set(NLabel::events, it.events)
         }
 
         register(Button, NButton::class) { props ->
             set(NButton::setText, props.title)
             set(NButton::setEnabled, !props.disabled)
-            set(NButton::onClick, props.action)
+            set(NButton::_action, props.action)
         }
 
         register(TextField, NTextField::class) { props ->
             set(NTextField::setText, props.bind.getter.call())
             set(NTextField::setEnabled, !props.disabled)
-            set(NTextField::onTextChanged, {props.bind.set(it)})
+            set(NTextField::onTextChanged, props.bind::set)
         }
 
         register(CheckBox, NCheckBox::class) { props ->
             set(NCheckBox::setText, props.text)
             set(NCheckBox::setSelected, props.bind.getter.call())
             set(NCheckBox::setEnabled, !props.disabled)
-            set(NCheckBox::onChange, {props.bind.set(it)})
+            set(NCheckBox::onChange, props.bind::set)
         }
     }
 
@@ -44,12 +46,37 @@ object SwingPlatform : Platform() {
     }
 }
 
+
+class NLabel : JLabel() {
+    var events: Events? = null
+
+    init {
+        addMouseListener(object: MouseListener {
+            override fun mouseReleased(e: MouseEvent?) {
+            }
+
+            override fun mouseEntered(e: MouseEvent?) {
+            }
+
+            override fun mouseClicked(e: MouseEvent?) {
+                events?.onClick?.invoke()
+            }
+
+            override fun mouseExited(e: MouseEvent?) {
+            }
+
+            override fun mousePressed(e: MouseEvent?) {
+            }
+        })
+    }
+}
+
 class NButton : JButton() {
-    var onClick: (() -> Unit)? = null
+    var _action: (() -> Unit)? = null
 
     init {
         addActionListener {
-            onClick?.invoke()
+            _action?.invoke()
         }
     }
 }

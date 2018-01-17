@@ -53,15 +53,17 @@ fun RenderContext.capture(build: RenderContext.() -> Unit) : NElement<*> {
 }
 
 abstract class View<T>(var props: T) {
-    internal lateinit var context: GraphState
-    internal lateinit var instance: UserInstance
+    internal var context: GraphState? = null
+    internal var instance: UserInstance? = null
 
     open fun shouldUpdate(newProps: T): Boolean {
         return props != newProps
     }
 
     fun forceUpdate() {
-        context.forceUpdate(instance)
+        if (context != null && instance != null) {
+            context!!.forceUpdate(instance!!)
+        }
     }
 
     abstract fun RenderContext.render()

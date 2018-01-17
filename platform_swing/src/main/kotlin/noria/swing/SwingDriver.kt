@@ -11,6 +11,8 @@ class SwingDriver : Host {
 
     override fun applyUpdates(updates: List<Update>) {
         SwingUtilities.invokeLater {
+            val dirtyComponents = mutableSetOf<JComponent>()
+            println(updates)
             for (u in updates) {
                 when (u) {
                     is Update.MakeNode -> {
@@ -50,14 +52,20 @@ class SwingDriver : Host {
                         val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                         val child = nodes[u.value as Int] ?: error("Update $u. Cannot find child")
 
-                        (node as JComponent).add(child as JComponent, u.index)
+                        (node as JComponent).apply {
+                            add(child as JComponent, u.index)
+                            dirtyComponents += this
+                        }
                     }
 
                     is Update.Remove -> {
                         val node = nodes[u.node] ?: error("Update $u. Cannot find node")
                         val child = nodes[u.value as Int] ?: error("Update $u. Cannot find child")
 
-                        (node as JComponent).remove(child as JComponent)
+                        (node as JComponent).apply {
+                            remove(child as JComponent)
+                            dirtyComponents += this
+                        }
                     }
 
                     is Update.DestroyNode -> {
@@ -65,6 +73,10 @@ class SwingDriver : Host {
                         nodes.remove(u.node)
                     }
                 }
+            }
+
+            dirtyComponents.forEach {
+                it.revalidate()
             }
         }
     }

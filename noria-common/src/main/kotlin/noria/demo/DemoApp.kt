@@ -2,73 +2,91 @@ package noria.demo
 
 import noria.*
 import noria.components.*
+import kotlin.properties.*
 
-data class Item(val desc: String, val completed: Boolean)
+data class Item(val key: String, val desc: String, val completed: Boolean, val editing: Boolean,
+                val onStartEditing: (Item) -> Unit, val onDoneEditing: (Item, String) -> Unit, val onSetCompleted: (Item, Boolean) -> Unit)
+
+var counter: Int = 0
+fun nextId(): String = (++counter).toString()
 
 class DemoAppProps
 class DemoAppComponent(p: DemoAppProps) : View<DemoAppProps>(p) {
-    var items: List<Item> by managedState(listOf(Item("first", true),Item("second", true),Item("third", false) ))
+    val items = mutableMapOf<String, Item>()
     var newItemText: String by managedState("")
 
-    var counter: Int by managedState(10)
-    var name: String by managedState("")
-    var buttonsEnabled: Boolean by managedState(true)
+
+    fun onNewItem(desc: String) {
+        val key = nextId()
+        items[key] = Item(key, desc, false, false, ::updateStarted, ::updateDescription, ::updateCompleted)
+        forceUpdate()
+    }
+
+    fun updateStarted(item: Item) {
+        items.values.filter { it.editing }.forEach {
+                    items[it.key] = it.copy(editing = false)
+                }
+        items[item.key] = item.copy(editing = true)
+        forceUpdate()
+    }
+
+    fun updateCompleted(item: Item, completed: Boolean) {
+        items[item.key] = item.copy(completed = completed)
+        forceUpdate()
+    }
+
+    fun updateDescription(item: Item, desc: String) {
+        items[item.key] = item.copy(desc = desc, editing = false)
+        forceUpdate()
+    }
+
+    fun newItem(desc: String) {
+
+    }
+
+    init {
+        onNewItem("Clean dishes")
+        onNewItem("Workout")
+        onNewItem("Read fiction")
+    }
 
     override fun RenderContext.render() {
         vbox {
-            textField(::newItemText)
-
-            for (item in items) {
-                x(::ItemComponent, item)
+            textField(::newItemText) {
+                onNewItem(newItemText)
+                newItemText = ""
             }
 
-/*
-            hbox {
-                justifyContent = JustifyContent.center
-
-                checkbox("Enable Buttons", ::buttonsEnabled)
-
-                button("More", !buttonsEnabled) {
-                    counter++
-                }
-
-                button("Less", !buttonsEnabled) {
-                    counter--
-                }
+            for (item in items.values.reversed()) {
+                x(::ItemComponent, item, item.key)
             }
 
-            hbox {
-                label("Name?")
-                textField(::name)
-                if (name.isNotBlank()) {
-                    label("Nice to meet you, $name")
-                }
-            }
-
-            hbox {
-                justifyContent = JustifyContent.center
-                label("Counter = ${counter}")
-            }
-
-            repeat(counter) { n ->
-                hbox {
-                    label("Item #${(n + 1).toString().padStart(2)}")
-                }
-            }
-*/
+            label("Total items: ${items.size}, completed: ${items.count { it.value.completed }}")
         }
-
     }
 }
 
-class ItemComponent(props: Item) : View<Item>(props) {
-    var completed : Boolean by managedState(props.completed)
+class ItemComponent(p: Item) : View<Item>(p) {
+    var editText: String by managedState(props.desc)
+    var completed : Boolean by Delegates.observable(p.completed) { _, _, v ->
+        props.onSetCompleted(props, v)
+    }
 
     override fun RenderContext.render() {
-        println("Render $props. Completed = $completed")
         hbox {
-            checkbox("", ::completed)
-            label(props.desc)
+            if (props.editing) {
+                textField(::editText) {
+                    props.onDoneEditing(props, editText)
+                }
+            }
+            else {
+                checkbox("", ::completed)
+                label(props.desc) {
+                    events.onClick = {
+                        props.onStartEditing(props)
+                    }
+                }
+            }
         }
     }
 }
