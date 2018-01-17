@@ -12,8 +12,8 @@ class SwingDriver : Host {
     override fun applyUpdates(updates: List<Update>) {
         SwingUtilities.invokeLater {
             val dirtyComponents = mutableSetOf<JComponent>()
-            println(updates)
             for (u in updates) {
+                println(u)
                 when (u) {
                     is Update.MakeNode -> {
                         if (nodes[u.node] != null) error("Update $u. Node already exists")

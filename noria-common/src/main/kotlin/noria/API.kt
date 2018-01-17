@@ -57,7 +57,7 @@ abstract class View<T>(var props: T) {
     internal var instance: UserInstance? = null
 
     open fun shouldUpdate(newProps: T): Boolean {
-        return props != newProps
+        return true //props != newProps
     }
 
     fun forceUpdate() {

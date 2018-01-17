@@ -29,6 +29,7 @@ object SwingPlatform : Platform() {
             set(NTextField::setText, props.bind.getter.call())
             set(NTextField::setEnabled, !props.disabled)
             set(NTextField::onTextChanged, props.bind::set)
+            set(NTextField::events, props.events)
         }
 
         register(CheckBox, NCheckBox::class) { props ->
@@ -82,6 +83,7 @@ class NButton : JButton() {
 }
 
 class NTextField : JTextField() {
+    var events: Events? = null
     var onTextChanged: ((newText: String) -> Unit)? = null
     val currentText: String get() = document.getText(0, document.length)
 
@@ -96,6 +98,20 @@ class NTextField : JTextField() {
 
             override fun removeUpdate(e: DocumentEvent) {
                 onTextChanged?.invoke(currentText)
+            }
+        })
+
+        addKeyListener(object: KeyListener {
+            override fun keyTyped(e: KeyEvent) {
+            }
+
+            override fun keyPressed(e: KeyEvent) {
+                if(e.keyCode == KeyEvent.VK_ENTER) {
+                    events?.onEnter?.invoke()
+                }
+            }
+
+            override fun keyReleased(e: KeyEvent) {
             }
         })
     }

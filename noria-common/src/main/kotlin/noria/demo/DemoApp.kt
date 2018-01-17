@@ -40,10 +40,6 @@ class DemoAppComponent(p: DemoAppProps) : View<DemoAppProps>(p) {
         forceUpdate()
     }
 
-    fun newItem(desc: String) {
-
-    }
-
     init {
         onNewItem("Clean dishes")
         onNewItem("Workout")
@@ -53,8 +49,10 @@ class DemoAppComponent(p: DemoAppProps) : View<DemoAppProps>(p) {
     override fun RenderContext.render() {
         vbox {
             textField(::newItemText) {
-                onNewItem(newItemText)
-                newItemText = ""
+                events.onEnter = {
+                    onNewItem(newItemText)
+                    newItemText = ""
+                }
             }
 
             for (item in items.values.reversed()) {
@@ -76,7 +74,9 @@ class ItemComponent(p: Item) : View<Item>(p) {
         hbox {
             if (props.editing) {
                 textField(::editText) {
-                    props.onDoneEditing(props, editText)
+                    events.onEnter = {
+                        props.onDoneEditing(props, editText)
+                    }
                 }
             }
             else {
