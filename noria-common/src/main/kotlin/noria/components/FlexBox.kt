@@ -25,6 +25,19 @@ class BoxProps : ContainerProps() {
 
     var alignItems: Align? = null
     var alignContent: Align? = null
+    
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is BoxProps) return false
+
+        if (flexDirection != other.flexDirection) return false
+        if (flexWrap != other.flexWrap) return false
+        if (justifyContent != other.justifyContent) return false
+        if (alignItems != other.alignItems) return false
+        if (alignContent != other.alignContent) return false
+
+        return true
+    }
 }
 
 enum class Align {

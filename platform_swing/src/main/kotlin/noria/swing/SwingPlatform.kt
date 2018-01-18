@@ -3,6 +3,7 @@ package noria.swing
 import noria.*
 import noria.components.*
 import noria.swing.components.*
+import java.awt.*
 import java.awt.event.*
 import javax.swing.*
 import javax.swing.event.*
@@ -169,5 +170,77 @@ class NCheckBox : JCheckBox(), ControlWithEvents {
         }
 
         setupListeners()
+    }
+}
+
+class NPanel : JPanel(), ControlWithEvents {
+    override var events: Events? = null
+
+    init {
+        setupListeners()
+    }
+
+    fun setFlex(box: BoxProps) {
+        if (box.flexDirection == FlexDirection.column) {
+            layout = VerticalFlowLayout().apply {
+                when (box.justifyContent ?: JustifyContent.start) {
+                    JustifyContent.center -> {
+                        alignment = VerticalFlowLayout.MIDDLE
+                    }
+
+                    JustifyContent.start -> {
+                        alignment = VerticalFlowLayout.TOP
+                    }
+
+                    JustifyContent.end -> {
+                        alignment = VerticalFlowLayout.BOTTOM
+                    }
+
+                    JustifyContent.flexStart -> TODO()
+                    JustifyContent.flexEnd -> TODO()
+                    JustifyContent.left -> TODO()
+                    JustifyContent.right -> TODO()
+                    JustifyContent.baseline -> TODO()
+                    JustifyContent.firstBaseline -> TODO()
+                    JustifyContent.lastBaseline -> TODO()
+                    JustifyContent.spaceBetween -> TODO()
+                    JustifyContent.spaceAround -> TODO()
+                    JustifyContent.spaceEvenly -> TODO()
+                    JustifyContent.stretch -> TODO()
+                    JustifyContent.safeCenter -> TODO()
+                    JustifyContent.unsafeCenter -> TODO()
+                }
+            }
+        } else {
+            layout = FlowLayout().apply {
+                when (box.justifyContent ?: JustifyContent.start) {
+                    JustifyContent.center -> {
+                        alignment = FlowLayout.CENTER
+                    }
+
+                    JustifyContent.start -> {
+                        alignment = FlowLayout.LEADING
+                    }
+
+                    JustifyContent.end -> {
+                        alignment = FlowLayout.TRAILING
+                    }
+
+                    JustifyContent.flexStart -> TODO()
+                    JustifyContent.flexEnd -> TODO()
+                    JustifyContent.left -> TODO()
+                    JustifyContent.right -> TODO()
+                    JustifyContent.baseline -> TODO()
+                    JustifyContent.firstBaseline -> TODO()
+                    JustifyContent.lastBaseline -> TODO()
+                    JustifyContent.spaceBetween -> TODO()
+                    JustifyContent.spaceAround -> TODO()
+                    JustifyContent.spaceEvenly -> TODO()
+                    JustifyContent.stretch -> TODO()
+                    JustifyContent.safeCenter -> TODO()
+                    JustifyContent.unsafeCenter -> TODO()
+                }
+            }
+        }
     }
 }
