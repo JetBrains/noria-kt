@@ -49,18 +49,23 @@ class DemoAppComponent(p: DemoAppProps) : View<DemoAppProps>(p) {
 
     override fun RenderContext.render() {
         vbox {
-            textField(::newItemText) {
-                events.onEnter = {
-                    onNewItem(newItemText)
-                    newItemText = ""
+            this.alignItems = Align.center
+            
+            vbox {
+                this.justifyContent = JustifyContent.center
+                textField(::newItemText) {
+                    events.onEnter = {
+                        onNewItem(newItemText)
+                        newItemText = ""
+                    }
                 }
-            }
 
-            for (item in items.values.reversed()) {
-                x(::ItemComponent, item, item.key)
-            }
+                for (item in items.values.reversed()) {
+                    x(::ItemComponent, item, item.key)
+                }
 
-            label("Total items: ${items.size}, completed: ${items.count { it.value.completed }}")
+                label("Total items: ${items.size}, completed: ${items.count { it.value.completed }}")
+            }
         }
     }
 }
