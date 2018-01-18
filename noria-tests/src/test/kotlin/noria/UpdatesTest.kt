@@ -93,7 +93,7 @@ data class HOProps(val x: NElement<*>,
 
 class HO(p: HOProps) : View<HOProps>(p) {
     override fun RenderContext.render() {
-        val x1 = capture {  emit(props.x) }
+        val x1 = capture { emit(props.x) }
         val y1 = capture { emit(props.y) }
 
         x(::SplitView, (SplitProps(left = x1, right = y1)))
@@ -130,7 +130,7 @@ class Wrapper(p: WrapperProps) : View<WrapperProps>(p) {
 data class ReifiesProps(val i: Int)
 class Reifies(p: ReifiesProps) : View<ReifiesProps>(p) {
     override fun RenderContext.render() {
-        val e = capture {label("some text")}
+        val e = capture { label("some text") }
         div {
             if (props.i == 0) {
                 x(::Wrapper, WrapperProps(e))
@@ -158,7 +158,7 @@ class RenderCounter(p: Any) : View<Any>(0) {
     }
 }
 
-class SwitchingComponent(i: Int): View<Int>(i) {
+class SwitchingComponent(i: Int) : View<Int>(i) {
     override fun RenderContext.render() {
         if (props == 0) {
             label("x")
@@ -178,13 +178,13 @@ class UpdatesTest {
                 div {
                     x(::SwitchingComponent, 1)
                 } to listOf(
-                        Update.DestroyNode(node=1),
-                        Update.MakeNode(node=3, type="input", parameters= fastStringMap()),
-                        Update.SetAttr(node=3, attr="type", value="button"),
-                        Update.SetAttr(node=3, attr="value", value="x"),
-                        Update.SetCallback(node=3, attr="click", async=true),
-                        Update.Remove(node=0, attr="children", value=1),
-                        Update.Add(node=0, attr="children", value=3, index=0))))
+                        Update.MakeNode(node = 3, type = "input", parameters = fastStringMap()),
+                        Update.SetAttr(node = 3, attr = "type", value = "button"),
+                        Update.SetAttr(node = 3, attr = "value", value = "x"),
+                        Update.SetCallback(node = 3, attr = "click", async = true),
+                        Update.Remove(node = 0, attr = "children", value = 1),
+                        Update.Add(node = 0, attr = "children", value = 3, index = 0),
+                        Update.DestroyNode(node = 1))))
     }
 
     @Test
@@ -202,11 +202,11 @@ class UpdatesTest {
         c.drainUpdateQueue()
         val updates1 = d.updates()
         assertEquals(listOf(
-                Update.DestroyNode(node = 2),
                 Update.MakeNode(node = 3, type = "span", parameters = fastStringMap()),
                 Update.SetCallback(node = 3, attr = "click", async = true),
                 Update.Remove(node = 1, attr = "children", value = 2),
-                Update.Add(node = 1, attr = "children", value = 3, index = 0)), updates1)
+                Update.Add(node = 1, attr = "children", value = 3, index = 0),
+                Update.DestroyNode(node = 2)), updates1)
     }
 
     fun checkUpdates(testData: List<Pair<NElement<*>, List<Update>?>>): List<Update>? {
@@ -350,9 +350,9 @@ class UpdatesTest {
                         Update.Add(node = 0, attr = "children", value = 4, index = 2),
                         Update.DestroyNode(node = 1)),
                 div {
-                    x(hoy, "hoy"){}
-                    x(hiy, "hiy"){}
-                    x(fu , "fu" ){}
+                    x(hoy, "hoy") {}
+                    x(hiy, "hiy") {}
+                    x(fu, "fu") {}
                 } to listOf(
                         Update.Remove(node = 0, attr = "children", value = 2),
                         Update.Add(node = 0, attr = "children", value = 2, index = 0))))

@@ -32,6 +32,7 @@ class Env(private val parent: Env?, private val vars: MutableMapLike<Int, Instan
 
 class ReconciliationState(val graph: GraphState) {
     private val updates: MutableList<Update> = mutableListOf()
+    private val garbage: MutableList<Update.DestroyNode> = mutableListOf()
 
     fun forceUpdate(c: UserInstance) {
         val refs = c.backrefs.toHashSet()
@@ -52,7 +53,7 @@ class ReconciliationState(val graph: GraphState) {
                 }
             }
         }
-        graph.driver.applyUpdates(updates)
+        graph.driver.applyUpdates(updates + garbage)
     }
 
     private fun supply(u: Update) {
@@ -67,7 +68,7 @@ class ReconciliationState(val graph: GraphState) {
     //TODO remove, tests only
     fun reconcile(component: Instance?, e: NElement<*>): Pair<Instance?, List<Update>> {
         val instance = reconcileImpl(component, e, Env(null, fastIntMap()))
-        return instance to updates
+        return instance to (updates + garbage)
     }
 
     private fun reconcileImpl(component: Instance?, e: NElement<*>?, env: Env): Instance? =
@@ -228,7 +229,7 @@ class ReconciliationState(val graph: GraphState) {
     private fun gc(c: Instance) {
         val node = c.node
         if (node != null) {
-            supply(Update.DestroyNode(node))
+            destroyValue(c)
         }
         when (c) {
             is UserInstance -> c.byKeys.forEach { _, instance ->
@@ -365,7 +366,7 @@ class ReconciliationState(val graph: GraphState) {
     }
 
     private fun destroyValue(hostInstance: Instance) {
-        supply(Update.DestroyNode(hostInstance.node!!))
+        garbage.add(Update.DestroyNode(hostInstance.node!!))
     }
 
     private fun updateOrder(node: Int, attr: String, oldList: List<Int>, newList: List<Int>) {
