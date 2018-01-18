@@ -16,6 +16,9 @@ open class DomProps : HostProps(), RenderContext {
 
     // Events
     var click by handler<DomEvent>()
+    var focus by handler<DomEvent>()
+    var blur by handler<DomEvent>()
+
     var input by handler<ChangeEvent>()
     var change by handler<ChangeEvent>()
     var clicked by handler<ChangeEvent>()

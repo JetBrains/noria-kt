@@ -20,6 +20,14 @@ class TextField(p: TextFieldProps) : View<TextFieldProps>(p) {
             change = CallbackInfo(true) {
                 props.events.onEnter?.invoke()
             }
+
+            focus = CallbackInfo(true) {
+                props.events.onFocusGained?.invoke()
+            }
+
+            blur = CallbackInfo(true) {
+                props.events.onFocusLost?.invoke()
+            }
         }
     }
 }
