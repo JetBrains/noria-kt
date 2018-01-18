@@ -286,10 +286,12 @@ class ReconciliationState(val graph: GraphState) {
         forEachKey(newComponentsMap, oldComponentsMap) { attr ->
             val element = e.props.componentsMap[attr]
             val oldComponent = oldComponentsMap?.get(attr)
+            val oldNode = oldComponent?.node
             val newComponent = reconcileImpl(oldComponent, element, env)
             componentsMap[attr] = newComponent
-            if (oldComponent?.node != newComponent?.node) {
-                supply(Update.SetNodeAttr(node, attr, newComponent?.node))
+            val newNode = newComponent?.node
+            if (oldNode != newNode) {
+                supply(Update.SetNodeAttr(node, attr, newNode))
             }
         }
 
