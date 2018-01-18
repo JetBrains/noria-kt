@@ -41,7 +41,11 @@ class JSDriver(val events: (EventInfo) -> Unit) : Host {
                             roots[id] ?: error("Root $id has not been registered")
                         }
                         "textnode" -> document.createTextNode("")
-                        else -> document.createElement(u.type)
+                        else -> {
+                            val element = document.createElement(u.type)
+                            element.setAttribute("node-id", "${u.node}")
+                            element
+                        }
                     }
 
                     nodes[u.node] = newElement

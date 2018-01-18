@@ -156,10 +156,36 @@ class RenderCounter(p: Any) : View<Any>(0) {
             }
         }
     }
+}
 
+class SwitchingComponent(i: Int): View<Int>(i) {
+    override fun RenderContext.render() {
+        if (props == 0) {
+            label("x")
+        } else {
+            button(title = "x", action = {})
+        }
+    }
 }
 
 class UpdatesTest {
+    @Test
+    fun `component changes its subst`() {
+        checkUpdates(listOf(
+                div {
+                    x(::SwitchingComponent, 0)
+                } to null,
+                div {
+                    x(::SwitchingComponent, 1)
+                } to listOf(
+                        Update.DestroyNode(node=1),
+                        Update.MakeNode(node=3, type="input", parameters= fastStringMap()),
+                        Update.SetAttr(node=3, attr="type", value="button"),
+                        Update.SetAttr(node=3, attr="value", value="x"),
+                        Update.SetCallback(node=3, attr="click", async=true),
+                        Update.Remove(node=0, attr="children", value=1),
+                        Update.Add(node=0, attr="children", value=3, index=0))))
+    }
 
     @Test
     fun `test force update`() {
@@ -209,8 +235,8 @@ class UpdatesTest {
         checkUpdates(listOf(
                 createViewElement(::Reifies, ReifiesProps(0)) to null,
                 createViewElement(::Reifies, ReifiesProps(1)) to listOf(
-                        Update.Remove(node = 2, attr = "children", value = 0),
-                        Update.Add(node = 3, attr = "children", value = 0, index = 0)
+                        Update.Remove(node = 3, attr = "children", value = 0),
+                        Update.Add(node = 4, attr = "children", value = 0, index = 0)
                 )))
     }
 

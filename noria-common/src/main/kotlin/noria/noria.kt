@@ -388,8 +388,10 @@ class ReconciliationState(val graph: GraphState) {
         for (c in components) {
             componentsByKeys[c.element.key!!] = c
         }
+        val oldList = components.mapNotNull { it.node }
         val reconciledList = reconcileByKeys(componentsByKeys, elements, env)
-        updateOrder(node, attr, components.mapNotNull { it.node }, reconciledList.mapNotNull { it.node })
+        val newList = reconciledList.mapNotNull { it.node }
+        updateOrder(node, attr, oldList, newList)
         return reconciledList
     }
 }
