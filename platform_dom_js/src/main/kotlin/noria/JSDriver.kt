@@ -1,13 +1,10 @@
 package noria
 
-import noria.EventInfo
-import noria.Host
-import noria.Update
 import noria.views.*
 import org.w3c.dom.*
 import org.w3c.dom.events.*
 import org.w3c.dom.events.Event
-import kotlin.browser.document
+import kotlin.browser.*
 
 private fun Element.insertChildAtIndex(child: Node, index: Int) {
     if (index >= children.length) {
@@ -57,6 +54,9 @@ class JSDriver(val events: (EventInfo) -> Unit) : Host {
                         is Text -> node.textContent = u.value as String
                         is Element -> {
                             node[u.attr] = u.value
+                            if (u.attr == "autoFocus" && u.value == true) {
+                                window.setTimeout({node.focus()}, 0)
+                            }
                         }
                         else -> error("Unknown type of the node")
                     }

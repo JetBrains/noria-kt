@@ -8,6 +8,7 @@ class TextField(p: TextFieldProps) : View<TextFieldProps>(p) {
         x(inputCT) {
             type = "text"
             value = props.bind.get()
+            autoFocus = true
 
             if (props.disabled) {
                 disabled = true

@@ -35,6 +35,7 @@ open class DomProps : HostProps(), RenderContext {
 class InputProps : DomProps() {
     var type: String by value()
     var value: String by value()
+    var autoFocus: Boolean by value()
     var checked: Boolean by value()
     var disabled: Boolean by value()
 }
