@@ -56,12 +56,7 @@ class JSDriver(val events: (EventInfo) -> Unit) : Host {
                     when (node) {
                         is Text -> node.textContent = u.value as String
                         is Element -> {
-                            if (u.value == undefined) {
-                                node.removeAttribute(u.attr)
-                            }
-                            else {
-                                node.setAttribute(u.attr, u.value.toString())
-                            }
+                            node[u.attr] = u.value
                         }
                         else -> error("Unknown type of the node")
                     }
